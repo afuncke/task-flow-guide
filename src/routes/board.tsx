@@ -206,6 +206,18 @@ function BoardPage() {
                 label={col.label}
                 count={items.length}
                 itemIds={display.map((t) => t.id)}
+                onQuickAdd={(title) =>
+                  addTask({
+                    title,
+                    tags: [],
+                    priority: null,
+                    status: col.status,
+                    order: -1,
+                    ...(col.status === "done"
+                      ? { completedAt: new Date().toISOString() }
+                      : {}),
+                  })
+                }
               >
                 {display.map((t) => (
                   <SortableTask key={t.id} id={t.id} dimmed={activeId === t.id}>
@@ -263,15 +275,24 @@ function SortableColumn({
   label,
   count,
   itemIds,
+  onQuickAdd,
   children,
 }: {
   status: TaskStatus;
   label: string;
   count: number;
   itemIds: string[];
+  onQuickAdd: (title: string) => void;
   children: React.ReactNode;
 }) {
   const { isOver, setNodeRef } = useDroppable({ id: status });
+  const [draft, setDraft] = useState("");
+  const submit = () => {
+    const v = draft.trim();
+    if (!v) return;
+    onQuickAdd(v);
+    setDraft("");
+  };
   return (
     <div
       ref={setNodeRef}
@@ -281,6 +302,20 @@ function SortableColumn({
         <h2 className="text-sm font-semibold">{label}</h2>
         <span className="text-xs text-muted-foreground">{count}</span>
       </div>
+      <input
+        type="text"
+        value={draft}
+        onChange={(e) => setDraft(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === "Enter") {
+            e.preventDefault();
+            submit();
+          }
+        }}
+        placeholder={`+ Add to ${label.toLowerCase()}`}
+        aria-label={`Quick add task to ${label}`}
+        className="mb-2 w-full rounded-md border bg-background px-2 py-1.5 text-xs placeholder:text-muted-foreground focus:border-primary focus:outline-none"
+      />
       <SortableContext items={itemIds} strategy={verticalListSortingStrategy}>
         <div className="space-y-2 min-h-[40px]">{children}</div>
       </SortableContext>
