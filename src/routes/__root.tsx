@@ -77,14 +77,13 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "Lovable App" },
-      { name: "description", content: "Lovable Generated Project" },
-      { name: "author", content: "Lovable" },
-      { property: "og:title", content: "Lovable App" },
-      { property: "og:description", content: "Lovable Generated Project" },
+      { title: "Shenas — Focus on what's next" },
+      { name: "description", content: "A calm task manager that surfaces one thing at a time." },
+      { name: "author", content: "Shenas" },
+      { property: "og:title", content: "Shenas — Focus on what's next" },
+      { property: "og:description", content: "A calm task manager that surfaces one thing at a time." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
-      { name: "twitter:site", content: "@Lovable" },
     ],
     links: [
       {
@@ -119,8 +118,31 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
+      <div className="min-h-screen bg-background">
+        <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
+          <div className="mx-auto flex h-12 max-w-6xl items-center gap-1 px-4">
+            <Link to="/focus" className="mr-4 text-sm font-semibold tracking-tight">
+              Shenas
+            </Link>
+            <NavLink to="/focus">Focus</NavLink>
+            <NavLink to="/board">Board</NavLink>
+            <NavLink to="/tasks">All</NavLink>
+          </div>
+        </header>
+        <Outlet />
+      </div>
     </QueryClientProvider>
+  );
+}
+
+function NavLink({ to, children }: { to: string; children: ReactNode }) {
+  return (
+    <Link
+      to={to}
+      className="rounded-md px-2.5 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      activeProps={{ className: "rounded-md px-2.5 py-1 text-sm text-foreground font-medium" }}
+    >
+      {children}
+    </Link>
   );
 }
