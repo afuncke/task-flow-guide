@@ -8,9 +8,12 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, type ReactNode } from "react";
+import { Plus } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { GlobalTaskDialog } from "@/components/tasks/GlobalTaskDialog";
+import { taskDialogStore } from "@/lib/tasks/dialog-store";
 
 function NotFoundComponent() {
   return (
@@ -128,9 +131,18 @@ function RootComponent() {
             <NavLink to="/board">Board</NavLink>
             <NavLink to="/calendar">Calendar</NavLink>
             <NavLink to="/tasks">All</NavLink>
+            <button
+              onClick={() => taskDialogStore.openNew()}
+              className="ml-auto inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              aria-label="New task"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">New task</span>
+            </button>
           </div>
         </header>
         <Outlet />
+        <GlobalTaskDialog />
       </div>
     </QueryClientProvider>
   );
