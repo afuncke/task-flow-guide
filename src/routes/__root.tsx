@@ -135,7 +135,7 @@ function RootComponent() {
   );
 }
 
-function NavLink({ to, children }: { to: string; children: React.ReactNode }) {
+function NavLink({ to, children }: { to: string; children: ReactNode }) {
   return (
     <Link
       to={to}
