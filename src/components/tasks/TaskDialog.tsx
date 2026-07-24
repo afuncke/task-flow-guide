@@ -24,6 +24,7 @@ export interface TaskDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   task?: Task | null;
+  defaultDue?: string;
   knownTags: string[];
   onSave: (data: {
     title: string;
@@ -39,6 +40,7 @@ export function TaskDialog({
   open,
   onOpenChange,
   task,
+  defaultDue,
   knownTags,
   onSave,
   onDelete,
@@ -57,9 +59,9 @@ export function TaskDialog({
       setTags(task?.tags ?? []);
       setTagInput("");
       setPriority(task?.priority ?? null);
-      setDue(task?.due ?? "");
+      setDue(task?.due ?? defaultDue ?? "");
     }
-  }, [open, task]);
+  }, [open, task, defaultDue]);
 
   const commitTag = (raw: string) => {
     const t = raw.trim().replace(/^#/, "").toLowerCase();

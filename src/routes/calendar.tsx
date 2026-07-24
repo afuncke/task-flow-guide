@@ -199,7 +199,8 @@ function CalendarPage() {
       <TaskDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
-        task={editing ?? (prefillDue ? ({ due: prefillDue } as Task) : null)}
+        task={editing}
+        defaultDue={prefillDue}
         knownTags={knownTags}
         onSave={(data) => {
           if (editing) updateTask(editing.id, data);
