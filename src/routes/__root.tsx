@@ -126,6 +126,7 @@ function RootComponent() {
             </Link>
             <NavLink to="/focus">Focus</NavLink>
             <NavLink to="/board">Board</NavLink>
+            <NavLink to="/calendar">Calendar</NavLink>
             <NavLink to="/tasks">All</NavLink>
           </div>
         </header>
