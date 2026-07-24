@@ -6,6 +6,17 @@ import type { Task, TaskStatus } from "@/lib/tasks/types";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskDialog } from "@/components/tasks/TaskDialog";
 import { TagFilterBar } from "@/components/tasks/TagFilterBar";
+import {
+  DndContext,
+  DragOverlay,
+  PointerSensor,
+  useDraggable,
+  useDroppable,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+  type DragStartEvent,
+} from "@dnd-kit/core";
 
 export const Route = createFileRoute("/board")({
   head: () => ({
