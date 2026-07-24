@@ -11,4 +11,5 @@ export interface Task {
   due?: string; // ISO date (yyyy-mm-dd)
   createdAt: string; // ISO
   completedAt?: string;
+  order?: number; // manual sort within its status column
 }

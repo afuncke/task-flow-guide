@@ -33,6 +33,9 @@ export function urgency(task: Task): number {
 
 export function rankTasks(tasks: Task[]): Task[] {
   return [...tasks].sort((a, b) => {
+    const ao = a.order ?? Number.POSITIVE_INFINITY;
+    const bo = b.order ?? Number.POSITIVE_INFINITY;
+    if (ao !== bo) return ao - bo;
     const diff = urgency(b) - urgency(a);
     if (diff !== 0) return diff;
     return a.createdAt.localeCompare(b.createdAt);

@@ -66,5 +66,14 @@ export function useTasks() {
     [persist],
   );
 
-  return { tasks, hydrated, addTask, updateTask, setStatus, deleteTask };
+  const bulkUpdate = useCallback(
+    (patches: Record<string, Partial<Task>>) => {
+      persist(
+        loadTasks().map((t) => (patches[t.id] ? { ...t, ...patches[t.id] } : t)),
+      );
+    },
+    [persist],
+  );
+
+  return { tasks, hydrated, addTask, updateTask, setStatus, deleteTask, bulkUpdate };
 }
