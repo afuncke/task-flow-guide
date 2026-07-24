@@ -42,6 +42,8 @@ function BoardPage() {
   const [editing, setEditing] = useState<Task | null>(null);
   const [activeTags, setActiveTags] = useState<string[]>([]);
   const [showAllDone, setShowAllDone] = useState(false);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const knownTags = useMemo(
     () => Array.from(new Set(tasks.flatMap((t) => t.tags))).sort(),
@@ -71,6 +73,18 @@ function BoardPage() {
     setDialogOpen(true);
   };
 
+  const activeTask = activeId ? tasks.find((t) => t.id === activeId) ?? null : null;
+
+  const handleDragStart = (e: DragStartEvent) => setActiveId(String(e.active.id));
+  const handleDragEnd = (e: DragEndEvent) => {
+    setActiveId(null);
+    const over = e.over;
+    if (!over) return;
+    const nextStatus = over.id as TaskStatus;
+    const task = tasks.find((t) => t.id === e.active.id);
+    if (task && task.status !== nextStatus) setStatus(task.id, nextStatus);
+  };
+
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <div className="mb-6">
@@ -84,26 +98,28 @@ function BoardPage() {
         />
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {COLUMNS.map((col) => {
-          const items = byStatus[col.status];
-          const display =
-            col.status === "done" && !showAllDone ? items.slice(0, 10) : items;
-          return (
-            <div key={col.status} className="rounded-lg bg-muted/40 p-3">
-              <div className="mb-3 flex items-center justify-between px-1">
-                <h2 className="text-sm font-semibold">{col.label}</h2>
-                <span className="text-xs text-muted-foreground">{items.length}</span>
-              </div>
-              <div className="space-y-2">
+      <DndContext
+        sensors={sensors}
+        onDragStart={handleDragStart}
+        onDragEnd={handleDragEnd}
+        onDragCancel={() => setActiveId(null)}
+      >
+        <div className="grid gap-4 md:grid-cols-3">
+          {COLUMNS.map((col) => {
+            const items = byStatus[col.status];
+            const display =
+              col.status === "done" && !showAllDone ? items.slice(0, 10) : items;
+            return (
+              <DroppableColumn key={col.status} status={col.status} label={col.label} count={items.length}>
                 {display.map((t) => (
-                  <TaskCard
-                    key={t.id}
-                    task={t}
-                    onEdit={() => openEdit(t)}
-                    onMove={(s) => setStatus(t.id, s)}
-                    onDelete={() => deleteTask(t.id)}
-                  />
+                  <DraggableTask key={t.id} id={t.id} dimmed={activeId === t.id}>
+                    <TaskCard
+                      task={t}
+                      onEdit={() => openEdit(t)}
+                      onMove={(s) => setStatus(t.id, s)}
+                      onDelete={() => deleteTask(t.id)}
+                    />
+                  </DraggableTask>
                 ))}
                 {display.length === 0 && (
                   <div className="rounded-md border border-dashed py-6 text-center text-xs text-muted-foreground">
@@ -118,11 +134,18 @@ function BoardPage() {
                     {showAllDone ? "Show less" : `Show all (${items.length})`}
                   </button>
                 )}
-              </div>
+              </DroppableColumn>
+            );
+          })}
+        </div>
+        <DragOverlay>
+          {activeTask ? (
+            <div className="rotate-1 opacity-90">
+              <TaskCard task={activeTask} onEdit={() => {}} onMove={() => {}} onDelete={() => {}} />
             </div>
-          );
-        })}
-      </div>
+          ) : null}
+        </DragOverlay>
+      </DndContext>
 
       <TaskDialog
         open={dialogOpen}
@@ -135,6 +158,54 @@ function BoardPage() {
         }}
         onDelete={editing ? () => deleteTask(editing.id) : undefined}
       />
+    </div>
+  );
+}
+
+function DroppableColumn({
+  status,
+  label,
+  count,
+  children,
+}: {
+  status: TaskStatus;
+  label: string;
+  count: number;
+  children: React.ReactNode;
+}) {
+  const { isOver, setNodeRef } = useDroppable({ id: status });
+  return (
+    <div
+      ref={setNodeRef}
+      className={`rounded-lg p-3 transition-colors ${isOver ? "bg-primary/10 ring-2 ring-primary/40" : "bg-muted/40"}`}
+    >
+      <div className="mb-3 flex items-center justify-between px-1">
+        <h2 className="text-sm font-semibold">{label}</h2>
+        <span className="text-xs text-muted-foreground">{count}</span>
+      </div>
+      <div className="space-y-2">{children}</div>
+    </div>
+  );
+}
+
+function DraggableTask({
+  id,
+  dimmed,
+  children,
+}: {
+  id: string;
+  dimmed: boolean;
+  children: React.ReactNode;
+}) {
+  const { attributes, listeners, setNodeRef } = useDraggable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      {...attributes}
+      {...listeners}
+      className={dimmed ? "opacity-40" : undefined}
+    >
+      {children}
     </div>
   );
 }
