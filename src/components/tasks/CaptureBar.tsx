@@ -41,7 +41,7 @@ export function CaptureBar() {
 
   return (
     <Dialog open={open} onOpenChange={(v) => (v ? captureStore.open() : captureStore.close())}>
-      <DialogContent className="top-24 translate-y-0 sm:max-w-xl" showCloseButton={false}>
+      <DialogContent className="top-24 translate-y-0 sm:max-w-xl">
         <div className="flex items-center gap-2">
           <Inbox className="h-4 w-4 shrink-0 text-muted-foreground" />
           <Input
