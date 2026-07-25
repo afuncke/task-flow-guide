@@ -208,6 +208,38 @@ export function TaskDialog({
               <Input id="due" type="date" value={due} onChange={(e) => setDue(e.target.value)} />
             </div>
           </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+              When it fits
+            </Label>
+            <div className="grid grid-cols-2 gap-3">
+              <CtxSelect
+                label="Location"
+                value={ctxLocation}
+                onChange={(v) => setCtxLocation(v as Location)}
+                options={LOCATIONS.map((v) => ({ value: v, label: LOCATION_LABEL[v] }))}
+              />
+              <CtxSelect
+                label="Energy"
+                value={ctxEnergy}
+                onChange={(v) => setCtxEnergy(v as Energy)}
+                options={ENERGIES.map((v) => ({ value: v, label: ENERGY_LABEL[v] }))}
+              />
+              <CtxSelect
+                label="Duration"
+                value={ctxDuration}
+                onChange={(v) => setCtxDuration(v as Duration)}
+                options={DURATIONS.map((v) => ({ value: v, label: DURATION_LABEL[v] }))}
+              />
+              <CtxSelect
+                label="Work window"
+                value={ctxWorkWindow}
+                onChange={(v) => setCtxWorkWindow(v as WorkWindow)}
+                options={WORK_WINDOWS.map((v) => ({ value: v, label: WORK_WINDOW_LABEL[v] }))}
+              />
+            </div>
+          </div>
         </div>
 
         <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-between">
