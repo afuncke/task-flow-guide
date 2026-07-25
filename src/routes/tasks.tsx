@@ -138,7 +138,10 @@ function ListPage() {
                   </div>
                 </td>
                 <td className="px-3 py-2">
-                  <DueBadge due={t.due} />
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <DueBadge due={t.due} />
+                    <ContextChips context={t.context} muted={!contextFit(t, currentState)} />
+                  </div>
                 </td>
                 <td className="px-3 py-2 text-xs text-muted-foreground">{t.priority ?? "—"}</td>
                 <td className="px-3 py-2 text-right">
