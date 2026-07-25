@@ -28,6 +28,8 @@ const ACTIONS: Row[] = [
   { keys: ["T"], desc: "Jump to today" },
   { keys: ["R"], desc: "Re-run planning ritual" },
   { keys: ["L"], desc: "Soft landing for overdue tasks" },
+  { keys: ["E"], desc: "Close the day (shutdown ritual)" },
+
   { keys: ["p"], desc: "Toggle playful mode" },
   { keys: ["Esc"], desc: "Close dialog / blur input" },
   { keys: ["?"], desc: "Show this help" },
