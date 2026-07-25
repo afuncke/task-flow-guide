@@ -81,10 +81,35 @@ function formatMin(min: number): string {
 
 type ViewMode = "day" | "week";
 
+export interface DayBlock {
+  key: string;
+  task: Task;
+  slot: number;
+  slots: number;
+  partIndex: number;
+  partTotal: number;
+}
+
+/** Every block a task occupies: the first chunk plus any extra sessions. */
+export function taskBlocks(t: Task): { start: string; duration: number }[] {
+  const out: { start: string; duration: number }[] = [];
+  if (t.scheduledStart) {
+    out.push({ start: t.scheduledStart, duration: t.scheduledDuration ?? 30 });
+  }
+  for (const s of t.sessions ?? []) out.push(s);
+  return out.sort((a, b) => a.start.localeCompare(b.start));
+}
+
 function PlanPage() {
-  const { tasks, hydrated, updateTask, setStatus, bulkUpdate } = useTasks();
+  const { tasks, allTasks, hydrated, updateTask, setStatus, bulkUpdate } = useTasks();
   const { stored } = useContextState();
-  const { hydrated: planHydrated, isPlanned, markPlanned } = usePlanState();
+  const {
+    hydrated: planHydrated,
+    isPlanned,
+    markPlanned,
+    autoReplan,
+    setAutoReplan,
+  } = usePlanState();
   const [day, setDay] = useState(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -98,6 +123,9 @@ function PlanPage() {
   const todayKey = dateKey(new Date());
   const dayIsToday = dateKey(day) === todayKey;
   const key = dateKey(day);
+
+  // How long things really take, learned from finished work.
+  const insight = useMemo(() => estimateInsight(allTasks), [allTasks]);
 
   // Auto-open ritual once, when the day is today and not yet planned.
   useEffect(() => {
@@ -126,19 +154,29 @@ function PlanPage() {
   }, [day]);
 
   const { scheduled, needsSlot, unscheduled } = useMemo(() => {
-    const scheduled: { task: Task; slot: number; slots: number }[] = [];
+    const scheduled: DayBlock[] = [];
     const needsSlot: Task[] = [];
     const unscheduled: Task[] = [];
     for (const t of tasks) {
       if (t.status === "done") continue;
-      if (t.scheduledStart) {
-        const slot = isoToSlot(t.scheduledStart, day);
-        if (slot != null) {
-          const dur = Math.max(SLOT_MIN, t.scheduledDuration ?? 30);
-          const slots = Math.max(1, Math.round(dur / SLOT_MIN));
-          scheduled.push({ task: t, slot, slots });
-          continue;
-        }
+      const blocks = taskBlocks(t);
+      if (blocks.length > 0) {
+        let added = false;
+        blocks.forEach((b, i) => {
+          const slot = isoToSlot(b.start, day);
+          if (slot == null) return;
+          const dur = Math.max(SLOT_MIN, b.duration);
+          scheduled.push({
+            key: `${t.id}#${i}`,
+            task: t,
+            slot,
+            slots: Math.max(1, Math.round(dur / SLOT_MIN)),
+            partIndex: i,
+            partTotal: blocks.length,
+          });
+          added = true;
+        });
+        if (added) continue;
       }
       // Unscheduled bucket for this day: myDay pinned OR due here OR undue
       const pinnedHere = t.myDay === key;
@@ -158,10 +196,7 @@ function PlanPage() {
     return { scheduled, needsSlot, unscheduled };
   }, [tasks, day, key]);
 
-  const scheduledMin = scheduled.reduce(
-    (n, s) => n + (s.task.scheduledDuration ?? 30),
-    0,
-  );
+  const scheduledMin = scheduled.reduce((n, s) => n + s.slots * SLOT_MIN, 0);
   const workWindowMin = (stored.schedule.end - stored.schedule.start) * 60;
   const overCapacity = scheduledMin > workWindowMin;
 
@@ -173,11 +208,135 @@ function PlanPage() {
     [tasks, todayKey],
   );
 
+  // Deadline vs. scheduled time: warn while there's still room to choose.
+  const risk = useMemo(
+    () =>
+      forecastDeadlines(tasks, stored.schedule, { factor: insight.factor })[0] ?? null,
+    [tasks, stored.schedule, insight.factor],
+  );
+
   const shiftDay = (delta: number) => {
     const d = new Date(day);
     d.setDate(d.getDate() + delta * (view === "week" ? 7 : 1));
     setDay(d);
   };
+
+  const packDay = (
+    candidates: Task[],
+    busy: BusyRange[],
+    targetDay: Date,
+    targetKey: string,
+    label: string,
+    earliestMin?: number,
+  ): number => {
+    if (candidates.length === 0) return 0;
+    const { blocks } = autoSchedule(candidates, stored.schedule, busy, {
+      factor: insight.factor,
+      earliestMin,
+    });
+    const patches: Record<string, Partial<Task>> = {};
+    for (const [id, list] of Object.entries(blocks)) {
+      if (!list.length) continue;
+      patches[id] = {
+        scheduledStart: minutesToISO(targetDay, list[0].startMin),
+        scheduledDuration: list[0].duration,
+        sessions: list
+          .slice(1)
+          .map((b) => ({ start: minutesToISO(targetDay, b.startMin), duration: b.duration })),
+        myDay: targetKey,
+        due: targetKey,
+      };
+    }
+    const n = Object.keys(patches).length;
+    if (n) bulkUpdate(patches, label);
+    return n;
+  };
+
+  const runAutoScheduleForDay = () => {
+    const busy = scheduled.map((s) => {
+      const start = s.slot * SLOT_MIN + HOUR_START * 60;
+      return { startMin: start, endMin: start + s.slots * SLOT_MIN };
+    });
+    packDay([...needsSlot], busy, day, key, "Auto-scheduled the day");
+  };
+
+  /**
+   * Continuous reschedule — the plan keeps itself true.
+   *
+   * When something new lands on today, or a block slips into the past
+   * unfinished, the day quietly re-packs from now onward. Always undoable,
+   * never accusing.
+   */
+  const lastReplan = useRef<string>("");
+  useEffect(() => {
+    if (!hydrated || !planHydrated) return;
+    if (!autoReplan || !dayIsToday) return;
+
+    const timer = window.setTimeout(() => {
+      const now = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      if (nowMin >= stored.schedule.end * 60) return;
+
+      const stale: Task[] = [];
+      const busy: BusyRange[] = [];
+      const fresh: Task[] = [];
+
+      for (const t of tasks) {
+        if (t.status === "done") continue;
+        const blocks = taskBlocks(t).filter(
+          (b) => dateKey(new Date(b.start)) === todayKey,
+        );
+        if (blocks.length === 0) {
+          if (!t.scheduledStart && (t.myDay === todayKey || t.due === todayKey)) {
+            fresh.push(t);
+          }
+          continue;
+        }
+        const ends = blocks.map(
+          (b) => new Date(b.start).getTime() + b.duration * 60_000,
+        );
+        const allPast = ends.every((e) => e <= now.getTime());
+        if (allPast && t.status !== "doing") {
+          stale.push(t);
+        } else {
+          for (const b of blocks) {
+            const s = new Date(b.start);
+            const startMin = s.getHours() * 60 + s.getMinutes();
+            busy.push({ startMin, endMin: startMin + b.duration });
+          }
+        }
+      }
+
+      const candidates = [...fresh, ...stale];
+      if (candidates.length === 0) return;
+
+      const signature = candidates
+        .map((t) => `${t.id}:${t.scheduledStart ?? "-"}:${t.scheduledDuration ?? 0}`)
+        .sort()
+        .join("|");
+      if (signature === lastReplan.current) return;
+      lastReplan.current = signature;
+
+      const moved = packDay(
+        candidates,
+        busy,
+        day,
+        todayKey,
+        "Plan updated",
+        nowMin,
+      );
+      if (moved > 0) {
+        toast(
+          stale.length > 0
+            ? "Plan updated — unfinished blocks moved ahead · u to undo"
+            : "Plan updated · u to undo",
+        );
+      }
+    }, 700);
+
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, autoReplan, dayIsToday, hydrated, planHydrated, todayKey, insight.factor]);
 
   if (!hydrated || !planHydrated) return null;
 
@@ -188,31 +347,46 @@ function PlanPage() {
   });
 
   const unschedule = (id: string) => {
-    updateTask(id, { scheduledStart: undefined });
+    updateTask(id, { scheduledStart: undefined, sessions: undefined });
   };
 
   const setDuration = (id: string, minutes: number) => {
     updateTask(id, { scheduledDuration: minutes });
   };
 
-  const runAutoScheduleForDay = () => {
-    const candidates = [...needsSlot];
-    const busy = scheduled.map((s) => {
-      const start = s.slot * SLOT_MIN + HOUR_START * 60;
-      return { startMin: start, endMin: start + (s.task.scheduledDuration ?? 30) };
-    });
-    const { assignments } = autoSchedule(candidates, stored.schedule, busy);
-    const patches: Record<string, Partial<Task>> = {};
-    for (const [id, a] of Object.entries(assignments)) {
-      patches[id] = {
-        scheduledStart: minutesToISO(day, a.startMin),
-        scheduledDuration: a.duration,
-        myDay: key,
-        due: key,
-      };
+  const removeBlock = (task: Task, partIndex: number) => {
+    if (partIndex === 0) {
+      unschedule(task.id);
+      return;
     }
-    if (Object.keys(patches).length) bulkUpdate(patches, "Auto-scheduled the day");
+    const blocks = taskBlocks(task);
+    const kept = blocks.filter((_, i) => i !== partIndex);
+    updateTask(task.id, {
+      scheduledStart: kept[0]?.start,
+      scheduledDuration: kept[0]?.duration ?? task.scheduledDuration,
+      sessions: kept.slice(1),
+    });
   };
+
+  const easeDeadline = (id: string) => {
+    const t = tasks.find((x) => x.id === id);
+    if (!t?.due) return;
+    const d = new Date(`${t.due}T00:00:00`);
+    do {
+      d.setDate(d.getDate() + 1);
+    } while (!stored.schedule.days.includes(d.getDay()));
+    updateTask(
+      id,
+      {
+        due: dateKey(d),
+        scheduledStart: undefined,
+        sessions: undefined,
+        rescheduleCount: (t.rescheduleCount ?? 0) + 1,
+      },
+      `Gave "${t.title.slice(0, 24)}" more room`,
+    );
+  };
+
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
