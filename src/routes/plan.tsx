@@ -947,19 +947,28 @@ function WeekView({
   );
 
   const blocksByDay = useMemo(() => {
-    const map = new Map<string, { task: Task; slot: number; slots: number }[]>();
+    const map = new Map<string, DayBlock[]>();
     for (const t of tasks) {
-      if (!t.scheduledStart || t.status === "done") continue;
-      const dk = dateKey(new Date(t.scheduledStart));
-      const dDate = days.find((d) => dateKey(d) === dk);
-      if (!dDate) continue;
-      const slot = isoToSlot(t.scheduledStart, dDate);
-      if (slot == null) continue;
-      const dur = Math.max(SLOT_MIN, t.scheduledDuration ?? 30);
-      const slots = Math.max(1, Math.round(dur / SLOT_MIN));
-      const list = map.get(dk) ?? [];
-      list.push({ task: t, slot, slots });
-      map.set(dk, list);
+      if (t.status === "done") continue;
+      const blocks = taskBlocks(t);
+      blocks.forEach((b, i) => {
+        const dk = dateKey(new Date(b.start));
+        const dDate = days.find((d) => dateKey(d) === dk);
+        if (!dDate) return;
+        const slot = isoToSlot(b.start, dDate);
+        if (slot == null) return;
+        const dur = Math.max(SLOT_MIN, b.duration);
+        const list = map.get(dk) ?? [];
+        list.push({
+          key: `${t.id}#${i}`,
+          task: t,
+          slot,
+          slots: Math.max(1, Math.round(dur / SLOT_MIN)),
+          partIndex: i,
+          partTotal: blocks.length,
+        });
+        map.set(dk, list);
+      });
     }
     return map;
   }, [tasks, days]);
@@ -1025,9 +1034,9 @@ function WeekView({
                 className="relative border-l"
                 onClick={() => onSelectDay(d)}
               >
-                {laid.map(({ task, slot, slots, col, cols }) => (
+                {laid.map(({ task, slot, slots, col, cols, key: bk }) => (
                   <div
-                    key={task.id}
+                    key={bk}
                     onClick={(e) => {
                       e.stopPropagation();
                       taskDialogStore.openEdit(task);

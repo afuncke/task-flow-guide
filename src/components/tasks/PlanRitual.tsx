@@ -6,6 +6,7 @@ import type { Task } from "@/lib/tasks/types";
 import { rankTasks } from "@/lib/tasks/urgency";
 import { useContextState } from "@/hooks/use-context-state";
 import { autoSchedule, minutesToISO } from "@/lib/tasks/auto-schedule";
+import { estimateInsight } from "@/lib/tasks/estimates";
 import { DueBadge } from "./DueBadge";
 import { TagChip } from "./TagChip";
 import { cn } from "@/lib/utils";
@@ -134,16 +135,19 @@ export function PlanRitual({
         return { startMin, endMin: startMin + (t.scheduledDuration ?? 30) };
       });
 
-    const { assignments, unplaced } = autoSchedule(
-      candidates,
-      stored.schedule,
-      busy,
-    );
+    const { blocks, unplaced } = autoSchedule(candidates, stored.schedule, busy, {
+      factor: estimateInsight(tasks).factor,
+    });
     const patches: Record<string, Partial<Task>> = {};
-    for (const [id, a] of Object.entries(assignments)) {
+    for (const [id, list] of Object.entries(blocks)) {
+      if (!list.length) continue;
       patches[id] = {
-        scheduledStart: minutesToISO(today, a.startMin),
-        scheduledDuration: a.duration,
+        scheduledStart: minutesToISO(today, list[0].startMin),
+        scheduledDuration: list[0].duration,
+        sessions: list.slice(1).map((b) => ({
+          start: minutesToISO(today, b.startMin),
+          duration: b.duration,
+        })),
         myDay: todayKey,
         due: todayKey,
       };
