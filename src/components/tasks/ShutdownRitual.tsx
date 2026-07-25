@@ -79,7 +79,7 @@ export function ShutdownRitual({
   const carry = (t: Task) => {
     onBulkUpdate({
       [t.id]: {
-        ...clearDay(t.id),
+        ...clearDay(),
         myDay: tomorrowKey,
         due: t.due === todayKey ? tomorrowKey : t.due,
         rescheduleCount: (t.rescheduleCount ?? 0) + 1,
@@ -89,7 +89,7 @@ export function ShutdownRitual({
   };
 
   const release = (t: Task) => {
-    onBulkUpdate({ [t.id]: { ...clearDay(t.id), due: undefined } });
+    onBulkUpdate({ [t.id]: { ...clearDay(), due: undefined } });
     setHandled((h) => ({ ...h, [t.id]: "No date" }));
   };
 
@@ -103,7 +103,7 @@ export function ShutdownRitual({
     const marks: Record<string, string> = {};
     for (const t of remaining) {
       patches[t.id] = {
-        ...clearDay(t.id),
+        ...clearDay(),
         myDay: tomorrowKey,
         due: t.due === todayKey ? tomorrowKey : t.due,
         rescheduleCount: (t.rescheduleCount ?? 0) + 1,
