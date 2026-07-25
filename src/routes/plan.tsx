@@ -956,7 +956,7 @@ function DayView({
               >
                 <span className="block truncate font-medium">{ev.title}</span>
                 <span className="block text-[10px] opacity-70">
-                  {formatMin2(ev.startMin)} · {ev.duration}m{ev.soft ? " · flexible" : ""}
+                  {clockLabel(ev.startMin)} · {ev.duration}m{ev.soft ? " · flexible" : ""}
                 </span>
               </button>
             );
