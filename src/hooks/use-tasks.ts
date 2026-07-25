@@ -2,6 +2,11 @@ import { useCallback, useEffect, useState } from "react";
 import type { Task, TaskStatus } from "@/lib/tasks/types";
 import { STORAGE_KEY, loadTasks, newId, saveTasks } from "@/lib/tasks/storage";
 
+const listeners = new Set<() => void>();
+function notify() {
+  for (const l of listeners) l();
+}
+
 export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [hydrated, setHydrated] = useState(false);
@@ -9,16 +14,21 @@ export function useTasks() {
   useEffect(() => {
     setTasks(loadTasks());
     setHydrated(true);
+    const refresh = () => setTasks(loadTasks());
     const onStorage = (e: StorageEvent) => {
-      if (e.key === STORAGE_KEY) setTasks(loadTasks());
+      if (e.key === STORAGE_KEY) refresh();
     };
+    listeners.add(refresh);
     window.addEventListener("storage", onStorage);
-    return () => window.removeEventListener("storage", onStorage);
+    return () => {
+      listeners.delete(refresh);
+      window.removeEventListener("storage", onStorage);
+    };
   }, []);
 
   const persist = useCallback((next: Task[]) => {
-    setTasks(next);
     saveTasks(next);
+    notify();
   }, []);
 
   const addTask = useCallback(
