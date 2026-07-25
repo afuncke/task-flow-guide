@@ -55,7 +55,9 @@ function ListPage() {
 
   const rows = useMemo(() => {
     let list = tasks;
+    if (areaFilter) list = list.filter((t) => matchesArea(t, aliveTasks, areaFilter));
     if (!showDone) list = list.filter((t) => t.status !== "done");
+
     if (activeTags.length > 0) {
       list = list.filter((t) => activeTags.every((tag) => t.tags.includes(tag)));
     }
