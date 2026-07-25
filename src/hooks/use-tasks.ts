@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Task, TaskStatus } from "@/lib/tasks/types";
+import { bucketOf, isActionable, isInbox } from "@/lib/tasks/gtd";
 import { STORAGE_KEY, loadTasks, newId, saveTasks } from "@/lib/tasks/storage";
 import { celebrate } from "@/lib/playful/celebrate";
 import { soundComplete } from "@/lib/playful/sound";
@@ -97,6 +98,25 @@ export function useTasks() {
     [persist],
   );
 
-  const visible = tasks.filter((t) => !t.archived);
-  return { tasks: visible, allTasks: tasks, hydrated, addTask, updateTask, setStatus, deleteTask, bulkUpdate };
+  const alive = tasks.filter((t) => !t.archived);
+  // `tasks` = clarified, single-step actions. Inbox items, projects, waiting-for
+  // and someday/maybe deliberately stay out of Focus / Plan / Board.
+  const actionable = alive.filter(isActionable);
+
+  return {
+    tasks: actionable,
+    allTasks: tasks,
+    aliveTasks: alive,
+    inbox: alive.filter(isInbox),
+    waiting: alive.filter((t) => bucketOf(t) === "waiting" && !t.isProject),
+    someday: alive.filter((t) => bucketOf(t) === "someday" && !t.isProject),
+    projects: alive.filter((t) => t.isProject && t.status !== "done"),
+    hydrated,
+    addTask,
+    updateTask,
+    setStatus,
+    deleteTask,
+    bulkUpdate,
+  };
 }
+
