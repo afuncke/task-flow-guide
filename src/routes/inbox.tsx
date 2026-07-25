@@ -456,3 +456,28 @@ function EmptyState({
     </div>
   );
 }
+
+function Choice({
+  icon,
+  label,
+  sub,
+  onClick,
+}: {
+  icon: React.ReactNode;
+  label: string;
+  sub: string;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className="flex w-full items-start gap-3 rounded-lg border p-3 text-left transition hover:border-primary/60 hover:bg-accent/40"
+    >
+      <span className="mt-0.5 text-muted-foreground">{icon}</span>
+      <span className="min-w-0 flex-1">
+        <span className="block text-sm font-medium">{label}</span>
+        <span className="block text-xs text-muted-foreground">{sub}</span>
+      </span>
+    </button>
+  );
+}

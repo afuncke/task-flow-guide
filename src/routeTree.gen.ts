@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as PlanRouteImport } from './routes/plan'
+import { Route as InboxRouteImport } from './routes/inbox'
 import { Route as FocusRouteImport } from './routes/focus'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as BoardRouteImport } from './routes/board'
@@ -21,9 +23,19 @@ const TasksRoute = TasksRouteImport.update({
   path: '/tasks',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ProjectsRoute = ProjectsRouteImport.update({
+  id: '/projects',
+  path: '/projects',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PlanRoute = PlanRouteImport.update({
   id: '/plan',
   path: '/plan',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InboxRoute = InboxRouteImport.update({
+  id: '/inbox',
+  path: '/inbox',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FocusRoute = FocusRouteImport.update({
@@ -52,7 +64,9 @@ export interface FileRoutesByFullPath {
   '/board': typeof BoardRoute
   '/calendar': typeof CalendarRoute
   '/focus': typeof FocusRoute
+  '/inbox': typeof InboxRoute
   '/plan': typeof PlanRoute
+  '/projects': typeof ProjectsRoute
   '/tasks': typeof TasksRoute
 }
 export interface FileRoutesByTo {
@@ -60,7 +74,9 @@ export interface FileRoutesByTo {
   '/board': typeof BoardRoute
   '/calendar': typeof CalendarRoute
   '/focus': typeof FocusRoute
+  '/inbox': typeof InboxRoute
   '/plan': typeof PlanRoute
+  '/projects': typeof ProjectsRoute
   '/tasks': typeof TasksRoute
 }
 export interface FileRoutesById {
@@ -69,15 +85,42 @@ export interface FileRoutesById {
   '/board': typeof BoardRoute
   '/calendar': typeof CalendarRoute
   '/focus': typeof FocusRoute
+  '/inbox': typeof InboxRoute
   '/plan': typeof PlanRoute
+  '/projects': typeof ProjectsRoute
   '/tasks': typeof TasksRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/board' | '/calendar' | '/focus' | '/plan' | '/tasks'
+  fullPaths:
+    | '/'
+    | '/board'
+    | '/calendar'
+    | '/focus'
+    | '/inbox'
+    | '/plan'
+    | '/projects'
+    | '/tasks'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/board' | '/calendar' | '/focus' | '/plan' | '/tasks'
-  id: '__root__' | '/' | '/board' | '/calendar' | '/focus' | '/plan' | '/tasks'
+  to:
+    | '/'
+    | '/board'
+    | '/calendar'
+    | '/focus'
+    | '/inbox'
+    | '/plan'
+    | '/projects'
+    | '/tasks'
+  id:
+    | '__root__'
+    | '/'
+    | '/board'
+    | '/calendar'
+    | '/focus'
+    | '/inbox'
+    | '/plan'
+    | '/projects'
+    | '/tasks'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -85,7 +128,9 @@ export interface RootRouteChildren {
   BoardRoute: typeof BoardRoute
   CalendarRoute: typeof CalendarRoute
   FocusRoute: typeof FocusRoute
+  InboxRoute: typeof InboxRoute
   PlanRoute: typeof PlanRoute
+  ProjectsRoute: typeof ProjectsRoute
   TasksRoute: typeof TasksRoute
 }
 
@@ -98,11 +143,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof TasksRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/projects': {
+      id: '/projects'
+      path: '/projects'
+      fullPath: '/projects'
+      preLoaderRoute: typeof ProjectsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/plan': {
       id: '/plan'
       path: '/plan'
       fullPath: '/plan'
       preLoaderRoute: typeof PlanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inbox': {
+      id: '/inbox'
+      path: '/inbox'
+      fullPath: '/inbox'
+      preLoaderRoute: typeof InboxRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/focus': {
@@ -141,7 +200,9 @@ const rootRouteChildren: RootRouteChildren = {
   BoardRoute: BoardRoute,
   CalendarRoute: CalendarRoute,
   FocusRoute: FocusRoute,
+  InboxRoute: InboxRoute,
   PlanRoute: PlanRoute,
+  ProjectsRoute: ProjectsRoute,
   TasksRoute: TasksRoute,
 }
 export const routeTree = rootRouteImport
