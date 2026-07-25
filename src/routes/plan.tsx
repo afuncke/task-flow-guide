@@ -163,6 +163,8 @@ function PlanPage() {
         setDay(d);
       } else if (detail === "replan") setRitualOpen(true);
       else if (detail === "soft-landing") setSoftLandingOpen(true);
+      else if (detail === "shutdown") setShutdownOpen(true);
+
     };
     window.addEventListener("shenas:key", on);
     return () => window.removeEventListener("shenas:key", on);
