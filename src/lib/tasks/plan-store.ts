@@ -68,8 +68,20 @@ export function usePlanState() {
     notify();
   }, []);
 
+  const markShutdown = useCallback((dateKey: string, val = true) => {
+    const next = { ...load(), shutdown: { ...load().shutdown, [dateKey]: val } };
+    save(next);
+    setState(next);
+    notify();
+  }, []);
+
   const isPlanned = useCallback(
     (dateKey: string): boolean => Boolean(state.planned[dateKey]),
+    [state],
+  );
+
+  const isShutdown = useCallback(
+    (dateKey: string): boolean => Boolean(state.shutdown?.[dateKey]),
     [state],
   );
 
@@ -77,7 +89,10 @@ export function usePlanState() {
     hydrated,
     isPlanned,
     markPlanned,
+    isShutdown,
+    markShutdown,
     autoReplan: state.autoReplan,
     setAutoReplan,
   };
+
 }
