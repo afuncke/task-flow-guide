@@ -184,7 +184,7 @@ function RootComponent() {
                 title="Quick capture (n) — just a title, refine later"
               >
                 <Plus className="h-3.5 w-3.5" />
-                <span className="hidden sm:inline">{c("newTask")}</span>
+                <span className="hidden sm:inline">Capture</span>
               </button>
             </div>
           </div>
