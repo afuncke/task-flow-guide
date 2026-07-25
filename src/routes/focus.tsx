@@ -11,6 +11,7 @@ import { DueBadge } from "@/components/tasks/DueBadge";
 import { UrgencyBadge } from "@/components/tasks/UrgencyBadge";
 import { ContextChips } from "@/components/tasks/ContextChips";
 import { TaskDialog } from "@/components/tasks/TaskDialog";
+import { FocusTimer } from "@/components/tasks/FocusTimer";
 import {
   Collapsible,
   CollapsibleContent,
@@ -135,6 +136,24 @@ function FocusPage() {
               Edit
             </Button>
           </div>
+
+          <div className="mt-6">
+            <FocusTimer
+              task={current}
+              onStart={() => setStatus(current.id, "doing")}
+              onPause={() => setStatus(current.id, "todo")}
+              onDone={(actualMinutes) => {
+                updateTask(current.id, { actualDuration: actualMinutes });
+                setStatus(current.id, "done");
+              }}
+              onExtend={(extra) =>
+                updateTask(current.id, {
+                  scheduledDuration: (current.scheduledDuration ?? 25) + extra,
+                })
+              }
+            />
+          </div>
+
 
           {upNext.length > 0 && (
             <Collapsible open={upNextOpen} onOpenChange={setUpNextOpen} className="mt-10">

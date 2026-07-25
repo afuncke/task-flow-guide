@@ -7,14 +7,16 @@ import {
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
-import { Plus } from "lucide-react";
+import { useEffect, useState, type ReactNode } from "react";
+import { Keyboard, Plus } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { GlobalTaskDialog } from "@/components/tasks/GlobalTaskDialog";
 import { ContextBar } from "@/components/tasks/ContextBar";
 import { taskDialogStore } from "@/lib/tasks/dialog-store";
+import { useKeybindings } from "@/hooks/use-keybindings";
+import { KeyboardHelp } from "@/components/KeyboardHelp";
 
 function NotFoundComponent() {
   return (
@@ -119,24 +121,35 @@ function RootShell({ children }: { children: ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const [helpOpen, setHelpOpen] = useState(false);
+  useKeybindings(() => setHelpOpen(true));
 
   return (
     <QueryClientProvider client={queryClient}>
       <div className="min-h-screen bg-background">
         <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
           <div className="mx-auto flex h-12 max-w-6xl items-center gap-1 px-4">
-            <Link to="/focus" className="mr-4 text-sm font-semibold tracking-tight">
+            <Link to="/plan" className="mr-4 text-sm font-semibold tracking-tight">
               Shenas
             </Link>
-            <NavLink to="/focus">Focus</NavLink>
             <NavLink to="/plan">Plan</NavLink>
+            <NavLink to="/focus">Focus</NavLink>
             <NavLink to="/board">Board</NavLink>
             <NavLink to="/calendar">Calendar</NavLink>
             <NavLink to="/tasks">All</NavLink>
             <button
+              onClick={() => setHelpOpen(true)}
+              className="ml-auto rounded-md p-1.5 text-muted-foreground hover:text-foreground"
+              aria-label="Keyboard shortcuts"
+              title="Keyboard shortcuts (?)"
+            >
+              <Keyboard className="h-4 w-4" />
+            </button>
+            <button
               onClick={() => taskDialogStore.openNew()}
-              className="ml-auto inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+              className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
               aria-label="New task"
+              title="New task (n)"
             >
               <Plus className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">New task</span>
@@ -146,6 +159,7 @@ function RootComponent() {
         <ContextBar />
         <Outlet />
         <GlobalTaskDialog />
+        <KeyboardHelp open={helpOpen} onOpenChange={setHelpOpen} />
       </div>
     </QueryClientProvider>
   );

@@ -48,9 +48,12 @@ export interface TaskDialogProps {
     priority: TaskPriority;
     due?: string;
     context?: TaskContext;
+    scheduledDuration?: number;
   }) => void;
   onDelete?: () => void;
 }
+
+const DURATION_PRESETS = [15, 30, 45, 60, 90];
 
 export function TaskDialog({
   open,
@@ -67,6 +70,7 @@ export function TaskDialog({
   const [tagInput, setTagInput] = useState("");
   const [priority, setPriority] = useState<TaskPriority>(null);
   const [due, setDue] = useState<string>("");
+  const [duration, setDuration] = useState<number | "">("");
   const [ctxLocation, setCtxLocation] = useState<Location>("anywhere");
   const [ctxEnergy, setCtxEnergy] = useState<Energy>("any");
   const [ctxDuration, setCtxDuration] = useState<Duration>("any");
@@ -80,6 +84,7 @@ export function TaskDialog({
       setTagInput("");
       setPriority(task?.priority ?? null);
       setDue(task?.due ?? defaultDue ?? "");
+      setDuration(task?.scheduledDuration ?? "");
       setCtxLocation(task?.context?.location ?? "anywhere");
       setCtxEnergy(task?.context?.energy ?? "any");
       setCtxDuration(task?.context?.duration ?? "any");
@@ -119,6 +124,7 @@ export function TaskDialog({
       priority,
       due: due || undefined,
       context: hasCtx ? context : undefined,
+      scheduledDuration: typeof duration === "number" && duration > 0 ? duration : undefined,
     });
     onOpenChange(false);
   };
@@ -206,6 +212,48 @@ export function TaskDialog({
             <div className="space-y-1.5">
               <Label htmlFor="due">Due</Label>
               <Input id="due" type="date" value={due} onChange={(e) => setDue(e.target.value)} />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label htmlFor="duration">Estimated duration</Label>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {DURATION_PRESETS.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setDuration(m)}
+                  className={`rounded-md border px-2 py-1 text-xs transition-colors ${
+                    duration === m
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                  }`}
+                >
+                  {m}m
+                </button>
+              ))}
+              <Input
+                id="duration"
+                type="number"
+                min={1}
+                step={5}
+                value={duration === "" ? "" : duration}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setDuration(v === "" ? "" : Math.max(1, Number(v)));
+                }}
+                placeholder="Custom"
+                className="h-8 w-24 text-xs"
+              />
+              {duration !== "" && (
+                <button
+                  type="button"
+                  onClick={() => setDuration("")}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Clear
+                </button>
+              )}
             </div>
           </div>
 
