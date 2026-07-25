@@ -133,17 +133,28 @@ function RootComponent() {
     <QueryClientProvider client={queryClient}>
       <div className="min-h-screen bg-background">
         <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
-          <div className="mx-auto flex h-12 max-w-6xl items-center gap-1 px-4">
+          <div className="mx-auto flex h-12 max-w-6xl items-center gap-1 overflow-x-auto px-4">
             <Link to="/plan" className="mr-4 text-sm font-semibold tracking-tight">
               {c("brand")}
             </Link>
+            <InboxNavLink />
             <NavLink to="/plan">{c("plan")}</NavLink>
             <NavLink to="/focus">{c("focus")}</NavLink>
+            <NavLink to="/projects">Projects</NavLink>
             <NavLink to="/board">{c("board")}</NavLink>
             <NavLink to="/calendar">{c("calendar")}</NavLink>
             <NavLink to="/tasks">{c("all")}</NavLink>
             <div className="ml-auto flex items-center gap-1">
+              <button
+                onClick={() => captureStore.open()}
+                className="rounded-md p-1.5 text-muted-foreground hover:text-foreground"
+                aria-label="Capture"
+                title="Capture (c)"
+              >
+                <Inbox className="h-4 w-4" />
+              </button>
               <PlayfulToggle />
+
               <button
                 onClick={() => setHelpOpen(true)}
                 className="rounded-md p-1.5 text-muted-foreground hover:text-foreground"
