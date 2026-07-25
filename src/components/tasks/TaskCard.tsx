@@ -20,15 +20,18 @@ export function TaskCard({
   onEdit,
   onMove,
   onDelete,
+  currentState,
 }: {
   task: Task;
   onEdit: () => void;
   onMove: (status: TaskStatus) => void;
   onDelete: () => void;
+  currentState?: CurrentState;
 }) {
+  const fits = currentState ? contextFit(task, currentState) : true;
   return (
     <div
-      className="group cursor-pointer rounded-lg border bg-card p-3 shadow-sm transition-colors hover:border-primary/40"
+      className={`group cursor-pointer rounded-lg border bg-card p-3 shadow-sm transition-colors hover:border-primary/40 ${fits ? "" : "opacity-60"}`}
       onClick={onEdit}
     >
       <div className="flex items-start justify-between gap-2">
@@ -71,6 +74,7 @@ export function TaskCard({
           <TagChip key={t} tag={t} />
         ))}
         <DueBadge due={task.due} />
+        <ContextChips context={task.context} muted={!fits} />
         {task.priority && (
           <span className="text-[10px] font-semibold text-muted-foreground">
             {task.priority}

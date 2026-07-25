@@ -13,6 +13,7 @@ import { Plus } from "lucide-react";
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
 import { GlobalTaskDialog } from "@/components/tasks/GlobalTaskDialog";
+import { ContextBar } from "@/components/tasks/ContextBar";
 import { taskDialogStore } from "@/lib/tasks/dialog-store";
 
 function NotFoundComponent() {
@@ -141,6 +142,7 @@ function RootComponent() {
             </button>
           </div>
         </header>
+        <ContextBar />
         <Outlet />
         <GlobalTaskDialog />
       </div>
