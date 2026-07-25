@@ -1,13 +1,16 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTasks } from "@/hooks/use-tasks";
+import { useContextState } from "@/hooks/use-context-state";
 import { rankTasks, urgency } from "@/lib/tasks/urgency";
+import { contextFit } from "@/lib/tasks/context";
 import type { Task } from "@/lib/tasks/types";
 import { TaskDialog } from "@/components/tasks/TaskDialog";
 import { TagFilterBar } from "@/components/tasks/TagFilterBar";
 import { TagChip } from "@/components/tasks/TagChip";
 import { DueBadge } from "@/components/tasks/DueBadge";
 import { UrgencyBadge } from "@/components/tasks/UrgencyBadge";
+import { ContextChips } from "@/components/tasks/ContextChips";
 import {
   Select,
   SelectContent,
@@ -34,6 +37,7 @@ type SortKey = "urgency" | "due" | "created";
 
 function ListPage() {
   const { tasks, hydrated, addTask, updateTask, setStatus, deleteTask } = useTasks();
+  const { currentState, stored } = useContextState();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const [activeTags, setActiveTags] = useState<string[]>([]);
@@ -51,12 +55,15 @@ function ListPage() {
     if (activeTags.length > 0) {
       list = list.filter((t) => activeTags.every((tag) => t.tags.includes(tag)));
     }
-    if (sort === "urgency") return rankTasks(list);
+    if (stored.hideMismatches) {
+      list = list.filter((t) => contextFit(t, currentState));
+    }
+    if (sort === "urgency") return rankTasks(list, currentState);
     if (sort === "due") {
       return [...list].sort((a, b) => (a.due ?? "9999").localeCompare(b.due ?? "9999"));
     }
     return [...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }, [tasks, activeTags, sort, showDone]);
+  }, [tasks, activeTags, sort, showDone, stored.hideMismatches, currentState]);
 
   if (!hydrated) return null;
 
@@ -131,7 +138,10 @@ function ListPage() {
                   </div>
                 </td>
                 <td className="px-3 py-2">
-                  <DueBadge due={t.due} />
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <DueBadge due={t.due} />
+                    <ContextChips context={t.context} muted={!contextFit(t, currentState)} />
+                  </div>
                 </td>
                 <td className="px-3 py-2 text-xs text-muted-foreground">{t.priority ?? "—"}</td>
                 <td className="px-3 py-2 text-right">

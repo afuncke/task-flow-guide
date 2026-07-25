@@ -1,12 +1,15 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTasks } from "@/hooks/use-tasks";
+import { useContextState } from "@/hooks/use-context-state";
 import { rankTasks, urgency } from "@/lib/tasks/urgency";
+import { contextFit } from "@/lib/tasks/context";
 import type { Task } from "@/lib/tasks/types";
 import { Button } from "@/components/ui/button";
 import { TagChip } from "@/components/tasks/TagChip";
 import { DueBadge } from "@/components/tasks/DueBadge";
 import { UrgencyBadge } from "@/components/tasks/UrgencyBadge";
+import { ContextChips } from "@/components/tasks/ContextChips";
 import { TaskDialog } from "@/components/tasks/TaskDialog";
 import {
   Collapsible,
@@ -29,13 +32,18 @@ export const Route = createFileRoute("/focus")({
 
 function FocusPage() {
   const { tasks, hydrated, addTask, updateTask, setStatus, deleteTask } = useTasks();
+  const { currentState, stored } = useContextState();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const [skipped, setSkipped] = useState<string[]>([]);
   const [upNextOpen, setUpNextOpen] = useState(false);
 
   const active = useMemo(() => tasks.filter((t) => t.status !== "done"), [tasks]);
-  const ranked = useMemo(() => rankTasks(active), [active]);
+  const scoped = useMemo(
+    () => (stored.hideMismatches ? active.filter((t) => contextFit(t, currentState)) : active),
+    [active, currentState, stored.hideMismatches],
+  );
+  const ranked = useMemo(() => rankTasks(scoped, currentState), [scoped, currentState]);
   const visible = useMemo(() => ranked.filter((t) => !skipped.includes(t.id)), [ranked, skipped]);
   const current = visible[0];
   const upNext = visible.slice(1, 4);
@@ -96,6 +104,7 @@ function FocusPage() {
               <TagChip key={t} tag={t} />
             ))}
             <DueBadge due={current.due} />
+            <ContextChips context={current.context} muted={!contextFit(current, currentState)} />
             {current.priority && (
               <span className="rounded border px-1.5 text-[10px] font-semibold text-muted-foreground">
                 {current.priority}

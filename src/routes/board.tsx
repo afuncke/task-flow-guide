@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTasks } from "@/hooks/use-tasks";
+import { useContextState } from "@/hooks/use-context-state";
 import { rankTasks } from "@/lib/tasks/urgency";
+import { contextFit } from "@/lib/tasks/context";
 import type { Task, TaskStatus } from "@/lib/tasks/types";
 import { TaskCard } from "@/components/tasks/TaskCard";
 import { TaskDialog } from "@/components/tasks/TaskDialog";
@@ -47,6 +49,7 @@ type ColumnMap = Record<TaskStatus, Task[]>;
 
 function BoardPage() {
   const { tasks, hydrated, addTask, updateTask, setStatus, deleteTask, bulkUpdate } = useTasks();
+  const { currentState, stored } = useContextState();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const [activeTags, setActiveTags] = useState<string[]>([]);
@@ -62,15 +65,21 @@ function BoardPage() {
   );
 
   const filtered = useMemo(() => {
-    if (activeTags.length === 0) return tasks;
-    return tasks.filter((t) => activeTags.every((tag) => t.tags.includes(tag)));
-  }, [tasks, activeTags]);
+    let list = tasks;
+    if (activeTags.length > 0) {
+      list = list.filter((t) => activeTags.every((tag) => t.tags.includes(tag)));
+    }
+    if (stored.hideMismatches) {
+      list = list.filter((t) => contextFit(t, currentState));
+    }
+    return list;
+  }, [tasks, activeTags, stored.hideMismatches, currentState]);
 
   const baseByStatus = useMemo<ColumnMap>(() => {
     const map: ColumnMap = { todo: [], doing: [], done: [] };
     for (const t of filtered) map[t.status].push(t);
-    map.todo = rankTasks(map.todo);
-    map.doing = rankTasks(map.doing);
+    map.todo = rankTasks(map.todo, currentState);
+    map.doing = rankTasks(map.doing, currentState);
     map.done = [...map.done].sort((a, b) => {
       const ao = a.order ?? Number.POSITIVE_INFINITY;
       const bo = b.order ?? Number.POSITIVE_INFINITY;
@@ -78,7 +87,7 @@ function BoardPage() {
       return (b.completedAt ?? b.createdAt).localeCompare(a.completedAt ?? a.createdAt);
     });
     return map;
-  }, [filtered]);
+  }, [filtered, currentState]);
 
   const byStatus = override ?? baseByStatus;
 
@@ -226,6 +235,7 @@ function BoardPage() {
                       onEdit={() => openEdit(t)}
                       onMove={(s) => setStatus(t.id, s)}
                       onDelete={() => deleteTask(t.id)}
+                      currentState={currentState}
                     />
                   </SortableTask>
                 ))}

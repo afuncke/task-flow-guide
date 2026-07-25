@@ -19,6 +19,21 @@ import {
 } from "@/components/ui/select";
 import { TagChip } from "./TagChip";
 import type { Task, TaskPriority } from "@/lib/tasks/types";
+import {
+  DURATIONS,
+  DURATION_LABEL,
+  ENERGIES,
+  ENERGY_LABEL,
+  LOCATIONS,
+  LOCATION_LABEL,
+  WORK_WINDOWS,
+  WORK_WINDOW_LABEL,
+  type Duration,
+  type Energy,
+  type Location,
+  type TaskContext,
+  type WorkWindow,
+} from "@/lib/tasks/context";
 
 export interface TaskDialogProps {
   open: boolean;
@@ -32,6 +47,7 @@ export interface TaskDialogProps {
     tags: string[];
     priority: TaskPriority;
     due?: string;
+    context?: TaskContext;
   }) => void;
   onDelete?: () => void;
 }
@@ -51,6 +67,10 @@ export function TaskDialog({
   const [tagInput, setTagInput] = useState("");
   const [priority, setPriority] = useState<TaskPriority>(null);
   const [due, setDue] = useState<string>("");
+  const [ctxLocation, setCtxLocation] = useState<Location>("anywhere");
+  const [ctxEnergy, setCtxEnergy] = useState<Energy>("any");
+  const [ctxDuration, setCtxDuration] = useState<Duration>("any");
+  const [ctxWorkWindow, setCtxWorkWindow] = useState<WorkWindow>("any");
 
   useEffect(() => {
     if (open) {
@@ -60,6 +80,10 @@ export function TaskDialog({
       setTagInput("");
       setPriority(task?.priority ?? null);
       setDue(task?.due ?? defaultDue ?? "");
+      setCtxLocation(task?.context?.location ?? "anywhere");
+      setCtxEnergy(task?.context?.energy ?? "any");
+      setCtxDuration(task?.context?.duration ?? "any");
+      setCtxWorkWindow(task?.context?.workWindow ?? "any");
     }
   }, [open, task, defaultDue]);
 
@@ -77,12 +101,24 @@ export function TaskDialog({
 
   const submit = () => {
     if (!title.trim()) return;
+    const context: TaskContext = {
+      location: ctxLocation,
+      energy: ctxEnergy,
+      duration: ctxDuration,
+      workWindow: ctxWorkWindow,
+    };
+    const hasCtx =
+      ctxLocation !== "anywhere" ||
+      ctxEnergy !== "any" ||
+      ctxDuration !== "any" ||
+      ctxWorkWindow !== "any";
     onSave({
       title: title.trim(),
       notes: notes.trim() || undefined,
       tags,
       priority,
       due: due || undefined,
+      context: hasCtx ? context : undefined,
     });
     onOpenChange(false);
   };
@@ -172,6 +208,38 @@ export function TaskDialog({
               <Input id="due" type="date" value={due} onChange={(e) => setDue(e.target.value)} />
             </div>
           </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+              When it fits
+            </Label>
+            <div className="grid grid-cols-2 gap-3">
+              <CtxSelect
+                label="Location"
+                value={ctxLocation}
+                onChange={(v) => setCtxLocation(v as Location)}
+                options={LOCATIONS.map((v) => ({ value: v, label: LOCATION_LABEL[v] }))}
+              />
+              <CtxSelect
+                label="Energy"
+                value={ctxEnergy}
+                onChange={(v) => setCtxEnergy(v as Energy)}
+                options={ENERGIES.map((v) => ({ value: v, label: ENERGY_LABEL[v] }))}
+              />
+              <CtxSelect
+                label="Duration"
+                value={ctxDuration}
+                onChange={(v) => setCtxDuration(v as Duration)}
+                options={DURATIONS.map((v) => ({ value: v, label: DURATION_LABEL[v] }))}
+              />
+              <CtxSelect
+                label="Work window"
+                value={ctxWorkWindow}
+                onChange={(v) => setCtxWorkWindow(v as WorkWindow)}
+                options={WORK_WINDOWS.map((v) => ({ value: v, label: WORK_WINDOW_LABEL[v] }))}
+              />
+            </div>
+          </div>
         </div>
 
         <DialogFooter className="flex-col-reverse gap-2 sm:flex-row sm:justify-between">
@@ -200,5 +268,35 @@ export function TaskDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function CtxSelect({
+  label,
+  value,
+  onChange,
+  options,
+}: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  options: { value: string; label: string }[];
+}) {
+  return (
+    <div className="space-y-1">
+      <Label className="text-xs text-muted-foreground">{label}</Label>
+      <Select value={value} onValueChange={onChange}>
+        <SelectTrigger className="h-8 text-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          {options.map((o) => (
+            <SelectItem key={o.value} value={o.value} className="text-xs">
+              {o.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
   );
 }
