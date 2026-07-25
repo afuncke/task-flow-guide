@@ -597,6 +597,7 @@ function DayView({
   const [dragOverSlot, setDragOverSlot] = useState<number | null>(null);
   const [resizing, setResizing] = useState<{
     id: string;
+    taskId: string;
     startSlot: number;
     startY: number;
     origSlots: number;
@@ -651,7 +652,7 @@ function DayView({
     const onUp = () => {
       if (resizing) {
         const minutes = resizing.curSlots * SLOT_MIN;
-        onSetDuration(resizing.id, minutes);
+        onSetDuration(resizing.taskId, minutes);
       }
       setResizing(null);
     };
@@ -742,15 +743,17 @@ function DayView({
             </div>
           )}
 
-          {laidOut.map(({ task, slot, slots, col, cols }) => {
+          {laidOut.map(({ task, slot, slots, col, cols, key: blockKey, partIndex, partTotal }) => {
+            const isLead = partIndex === 0;
+            const chunked = partTotal > 1;
             const effectiveSlots =
-              resizing?.id === task.id ? resizing.curSlots : slots;
+              resizing?.id === blockKey ? resizing.curSlots : slots;
             const left = `calc(3rem + ${(col / cols) * 100}% - ${(col / cols) * 3}rem)`;
             const width = `calc(${(1 / cols) * 100}% - ${(1 / cols) * 3}rem - 4px)`;
             return (
               <div
-                key={task.id}
-                draggable={!resizing}
+                key={blockKey}
+                draggable={isLead && !resizing}
                 onDragStart={(e) => {
                   e.dataTransfer.setData("text/task-id", task.id);
                   e.dataTransfer.effectAllowed = "move";
@@ -773,14 +776,15 @@ function DayView({
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-medium">{task.title}</div>
                     <div className="text-[10px] text-muted-foreground">
-                      {formatTime(task.scheduledStart!)} ·{" "}
+                      {formatTime(taskBlocks(task)[partIndex]?.start ?? task.scheduledStart!)} ·{" "}
                       {effectiveSlots * SLOT_MIN}m
+                      {chunked && ` · part ${partIndex + 1}/${partTotal}`}
                     </div>
                   </div>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      onUnschedule(task.id);
+                      onRemoveBlock(task, partIndex);
                     }}
                     className="rounded p-0.5 text-muted-foreground opacity-0 hover:bg-background hover:text-foreground group-hover:opacity-100"
                     aria-label="Unschedule"
@@ -788,7 +792,7 @@ function DayView({
                     <X className="h-3 w-3" />
                   </button>
                 </div>
-                {effectiveSlots >= 2 && (
+                {isLead && effectiveSlots >= 2 && (
                   <div
                     className="mt-1 flex flex-wrap items-center gap-1"
                     onClick={(e) => e.stopPropagation()}
@@ -828,12 +832,14 @@ function DayView({
                   </div>
                 )}
                 {/* Resize handle */}
+                {isLead && (
                 <div
                   onMouseDown={(e) => {
                     e.stopPropagation();
                     e.preventDefault();
                     setResizing({
-                      id: task.id,
+                      id: blockKey,
+                      taskId: task.id,
                       startSlot: slot,
                       startY: e.clientY,
                       origSlots: slots,
@@ -843,6 +849,7 @@ function DayView({
                   className="absolute bottom-0 left-0 right-0 h-1.5 cursor-ns-resize opacity-0 hover:bg-primary/30 group-hover:opacity-100"
                   aria-label="Resize"
                 />
+                )}
               </div>
             );
           })}
@@ -1059,23 +1066,15 @@ function formatHour(h: number): string {
   return d.toLocaleTimeString(undefined, { hour: "numeric" });
 }
 
-interface LaidBlock {
-  task: Task;
-  slot: number;
-  slots: number;
-  col: number;
-  cols: number;
-}
-
-function layoutBlocks(
-  blocks: { task: Task; slot: number; slots: number }[],
-): LaidBlock[] {
+function layoutBlocks<T extends { slot: number; slots: number }>(
+  blocks: T[],
+): (T & { col: number; cols: number })[] {
   const sorted = [...blocks].sort((a, b) => a.slot - b.slot);
-  const result: LaidBlock[] = [];
-  let cluster: (typeof sorted[number] & { end: number })[] = [];
+  const result: (T & { col: number; cols: number })[] = [];
+  let cluster: (T & { end: number })[] = [];
   const flush = () => {
     if (!cluster.length) return;
-    const cols: (typeof cluster[number] | null)[] = [];
+    const cols: ((T & { end: number }) | null)[] = [];
     const assignments: number[] = [];
     for (const b of cluster) {
       let placed = -1;
@@ -1094,15 +1093,10 @@ function layoutBlocks(
       assignments.push(placed);
     }
     const totalCols = cols.length;
-    cluster.forEach((b, i) =>
-      result.push({
-        task: b.task,
-        slot: b.slot,
-        slots: b.slots,
-        col: assignments[i],
-        cols: totalCols,
-      }),
-    );
+    cluster.forEach((b, i) => {
+      const { end: _end, ...rest } = b;
+      result.push({ ...(rest as unknown as T), col: assignments[i], cols: totalCols });
+    });
     cluster = [];
   };
   let clusterEnd = -1;
