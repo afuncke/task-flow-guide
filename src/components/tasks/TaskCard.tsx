@@ -6,6 +6,7 @@ import { ContextChips } from "./ContextChips";
 import { AreaChip } from "./AreaChip";
 import { useAreas } from "@/hooks/use-areas";
 import { urgency } from "@/lib/tasks/urgency";
+import { subtaskProgress } from "@/lib/tasks/subtasks";
 import { contextFit, type CurrentState } from "@/lib/tasks/context";
 
 import {
@@ -32,6 +33,7 @@ export function TaskCard({
   currentState?: CurrentState;
 }) {
   const fits = currentState ? contextFit(task, currentState) : true;
+  const steps = subtaskProgress(task);
   const { areaById } = useAreas();
 
   return (
