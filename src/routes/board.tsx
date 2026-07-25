@@ -179,6 +179,7 @@ function BoardPage() {
   const handleDragStart = (e: DragStartEvent) => {
     setActiveId(String(e.active.id));
     setOverride(baseByColumn);
+    soundPop();
   };
 
   const handleDragOver = (e: DragOverEvent) => {
