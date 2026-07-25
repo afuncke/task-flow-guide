@@ -198,7 +198,24 @@ function FocusPage() {
                 updateTask(current.id, {
                   scheduledDuration: (current.scheduledDuration ?? 25) + extra,
                 })
-              }
+}
+
+function formatWhen(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  if (sameDay) {
+    const diffMin = Math.round((d.getTime() - now.getTime()) / 60_000);
+    if (diffMin >= -5 && diffMin <= 5) return `now · ${time}`;
+    if (diffMin > 5 && diffMin < 60) return `in ${diffMin}m · ${time}`;
+    return `today ${time}`;
+  }
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (d.toDateString() === tomorrow.toDateString()) return `tomorrow ${time}`;
+  return `${d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })} ${time}`;
+}
             />
           </div>
 
