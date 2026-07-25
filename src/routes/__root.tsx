@@ -177,12 +177,12 @@ function RootComponent() {
                 <Keyboard className="h-4 w-4" />
               </button>
               <button
-                onClick={() => taskDialogStore.openNew()}
+                onClick={() => captureStore.open()}
                 className={`inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 ${
                   playful ? "playful-wiggle" : ""
                 }`}
-                aria-label="New task"
-                title="New task (n)"
+                aria-label="Quick capture"
+                title="Quick capture (n) — just a title, refine later"
               >
                 <Plus className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">{c("newTask")}</span>

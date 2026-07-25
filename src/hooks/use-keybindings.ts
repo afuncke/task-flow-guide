@@ -87,7 +87,7 @@ export function useKeybindings(onShowHelp: () => void) {
           return;
         case "n":
           e.preventDefault();
-          taskDialogStore.openNew();
+          captureStore.open();
           return;
         case "c":
           e.preventDefault();
