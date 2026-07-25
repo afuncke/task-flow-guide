@@ -22,8 +22,10 @@ export interface Task {
   completedAt?: string;
   order?: number; // manual sort within its status column
   context?: TaskContext;
-  scheduledStart?: string; // ISO datetime — planned block start
-  scheduledDuration?: number; // minutes
+  scheduledStart?: string; // ISO datetime — planned block start (first chunk)
+  scheduledDuration?: number; // minutes (total estimate; chunked when long)
+  /** Extra blocks when the work is chunked. The first chunk lives in scheduledStart. */
+  sessions?: { start: string; duration: number }[];
   myDay?: string; // ISO date the user pinned this task to (separate from due)
   actualDuration?: number; // minutes actually spent, recorded by focus timer
   rescheduleCount?: number; // # times this task has been moved to a new day
