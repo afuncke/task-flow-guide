@@ -3,6 +3,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useTasks } from "@/hooks/use-tasks";
 import { captureStore } from "@/lib/tasks/capture-store";
 import type { Task } from "@/lib/tasks/types";
+import { SuggestionPanel } from "@/components/tasks/SuggestionPanel";
+import type { Suggestion } from "@/lib/tasks/suggest";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import {
@@ -43,7 +45,7 @@ export const Route = createFileRoute("/inbox")({
   component: InboxPage,
 });
 
-type Mode = null | "next" | "project" | "waiting";
+type Mode = "assist" | null | "next" | "project" | "waiting";
 
 function todayKey(): string {
   const d = new Date();
@@ -59,6 +61,56 @@ function InboxPage() {
 
   const queue = useMemo(() => inbox.filter((t) => !skipped.includes(t.id)), [inbox, skipped]);
   const current = queue[0];
+
+  const applySuggestion = (task: Task, s: Suggestion) => {
+    const clarifiedAt = new Date().toISOString();
+    const common: Partial<Task> = {
+      title: s.title,
+      tags: s.tags,
+      priority: s.priority,
+      due: s.due,
+      scheduledDuration: s.scheduledDuration,
+      context: s.context,
+      areaId: s.areaId,
+      clarifiedAt,
+    };
+
+    if (s.kind === "project") {
+      updateTask(task.id, { ...common, isProject: true, bucket: "next" }, `Clarified "${s.title}"`);
+      if (s.firstAction?.trim()) {
+        addTask({
+          title: s.firstAction.trim(),
+          tags: s.tags,
+          priority: s.priority,
+          bucket: "next",
+          projectId: task.id,
+          areaId: s.areaId,
+          context: s.context,
+          scheduledDuration: s.scheduledDuration,
+          clarifiedAt,
+        });
+      }
+    } else if (s.kind === "waiting") {
+      updateTask(
+        task.id,
+        { ...common, bucket: "waiting", waitingOn: s.waitingOn, waitingSince: todayKey() },
+        `Clarified "${s.title}"`,
+      );
+    } else if (s.kind === "someday") {
+      updateTask(
+        task.id,
+        { ...common, bucket: "someday", due: undefined },
+        `Clarified "${s.title}"`,
+      );
+    } else {
+      updateTask(
+        task.id,
+        { ...common, bucket: "next", projectId: s.projectId },
+        `Clarified "${s.title}"`,
+      );
+      if (s.kind === "do-now") setStatus(task.id, "done");
+    }
+  };
 
   if (!hydrated) return null;
 
@@ -106,6 +158,7 @@ function InboxPage() {
           task={current}
           projects={projects}
           onSkip={() => setSkipped((s) => [...s, current.id])}
+          onAcceptSuggestion={(s) => applySuggestion(current, s)}
           onDoNow={() => {
             updateTask(current.id, { bucket: "next", clarifiedAt: new Date().toISOString() });
             setStatus(current.id, "done");
@@ -173,6 +226,7 @@ function ClarifyCard({
   task,
   projects,
   onSkip,
+  onAcceptSuggestion,
   onDoNow,
   onNextAction,
   onProject,
@@ -183,6 +237,7 @@ function ClarifyCard({
   task: Task;
   projects: Task[];
   onSkip: () => void;
+  onAcceptSuggestion: (s: Suggestion) => void;
   onDoNow: () => void;
   onNextAction: (patch: Partial<Task>) => void;
   onProject: (projectTitle: string, firstAction: string) => void;
@@ -190,7 +245,7 @@ function ClarifyCard({
   onSomeday: () => void;
   onTrash: () => void;
 }) {
-  const [mode, setMode] = useState<Mode>(null);
+  const [mode, setMode] = useState<Mode>("assist");
 
   return (
     <div className="rounded-xl border p-4">
@@ -198,6 +253,14 @@ function ClarifyCard({
         What is it?
       </div>
       <div className="mt-1 text-base font-medium">{task.title}</div>
+
+      {mode === "assist" && (
+        <SuggestionPanel
+          task={task}
+          onAccept={onAcceptSuggestion}
+          onDecideMyself={() => setMode(null)}
+        />
+      )}
 
       {mode === null && (
         <div className="mt-4 space-y-2">
@@ -238,6 +301,15 @@ function ClarifyCard({
             onClick={onTrash}
           />
         </div>
+      )}
+
+      {mode !== "assist" && (
+        <button
+          onClick={() => setMode("assist")}
+          className="mt-3 text-xs text-primary hover:underline"
+        >
+          Show suggested setup again
+        </button>
       )}
 
       {mode === "next" && (
