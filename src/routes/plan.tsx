@@ -114,10 +114,13 @@ export function taskBlocks(t: Task): { start: string; duration: number }[] {
 function PlanPage() {
   const { tasks, allTasks, hydrated, updateTask, setStatus, bulkUpdate } = useTasks();
   const { stored } = useContextState();
+  const { areas } = useAreas();
   const {
     hydrated: planHydrated,
     isPlanned,
     markPlanned,
+    isShutdown,
+    markShutdown,
     autoReplan,
     setAutoReplan,
   } = usePlanState();
@@ -130,6 +133,8 @@ function PlanPage() {
   const [ritualOpen, setRitualOpen] = useState(false);
   const [ritualDismissedThisSession, setRitualDismissedThisSession] = useState(false);
   const [softLandingOpen, setSoftLandingOpen] = useState(false);
+  const [shutdownOpen, setShutdownOpen] = useState(false);
+
 
   const todayKey = dateKey(new Date());
   const dayIsToday = dateKey(day) === todayKey;
