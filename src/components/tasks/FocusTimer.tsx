@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { Task } from "@/lib/tasks/types";
 import { Play, Pause, Check, Plus, X } from "lucide-react";
+import { clockTime } from "@/lib/time-of-day";
 
 /**
  * Small session timer for the current focus task.
@@ -52,6 +53,9 @@ export function FocusTimer({
   const remainSec = Math.max(0, totalSec - elapsedSec);
   const overtime = elapsedSec > totalSec;
   const pct = Math.min(100, (elapsedSec / totalSec) * 100);
+  // Time-blindness aid: name the wall-clock moment this block lands on,
+  // not just an abstract countdown.
+  const endsAt = running ? new Date(Date.now() + remainSec * 1000) : undefined;
 
   return (
     <div className="rounded-lg border bg-card p-4">
@@ -63,6 +67,7 @@ export function FocusTimer({
         <div className="text-xs text-muted-foreground">
           {planned}m planned
           {elapsedSec > 0 && ` · ${Math.round(elapsedSec / 60)}m elapsed`}
+          {endsAt && !overtime && ` · ends ${clockTime(endsAt)}`}
         </div>
       </div>
       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-muted">

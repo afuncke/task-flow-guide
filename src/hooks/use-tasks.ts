@@ -1,14 +1,10 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Task, TaskStatus } from "@/lib/tasks/types";
 import { bucketOf, isActionable, isInbox } from "@/lib/tasks/gtd";
-import { STORAGE_KEY, loadTasks, newId, saveTasks } from "@/lib/tasks/storage";
+import { STORAGE_KEY, loadTasks, newId, saveTasks, subscribeTasks } from "@/lib/tasks/storage";
+import { undoStore } from "@/lib/tasks/undo";
 import { celebrate } from "@/lib/playful/celebrate";
 import { soundComplete } from "@/lib/playful/sound";
-
-const listeners = new Set<() => void>();
-function notify() {
-  for (const l of listeners) l();
-}
 
 export function useTasks() {
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -21,17 +17,21 @@ export function useTasks() {
     const onStorage = (e: StorageEvent) => {
       if (e.key === STORAGE_KEY) refresh();
     };
-    listeners.add(refresh);
+    const unsubscribe = subscribeTasks(refresh);
     window.addEventListener("storage", onStorage);
     return () => {
-      listeners.delete(refresh);
+      unsubscribe();
       window.removeEventListener("storage", onStorage);
     };
   }, []);
 
-  const persist = useCallback((next: Task[]) => {
+  /**
+   * Every write snapshots first, so nothing needs a confirm dialog —
+   * the undo bar (and `u`) can always put it back.
+   */
+  const persist = useCallback((next: Task[], undoLabel?: string) => {
+    if (undoLabel) undoStore.push(undoLabel, loadTasks());
     saveTasks(next);
-    notify();
   }, []);
 
   const addTask = useCallback(
@@ -42,16 +42,19 @@ export function useTasks() {
         status: input.status ?? "todo",
         ...input,
       };
-      persist([task, ...loadTasks()]);
+      persist([task, ...loadTasks()], `Added "${trim(task.title)}"`);
       return task;
     },
     [persist],
   );
 
   const updateTask = useCallback(
-    (id: string, patch: Partial<Task>) => {
+    (id: string, patch: Partial<Task>, label?: string) => {
       const before = loadTasks().find((t) => t.id === id);
-      persist(loadTasks().map((t) => (t.id === id ? { ...t, ...patch } : t)));
+      persist(
+        loadTasks().map((t) => (t.id === id ? { ...t, ...patch } : t)),
+        label ?? undoLabelFor(before, patch),
+      );
       if (patch.status === "done" && before?.status !== "done") {
         soundComplete();
         celebrate();
@@ -73,6 +76,9 @@ export function useTasks() {
               }
             : t,
         ),
+        status === "done"
+          ? `Completed "${trim(before?.title)}"`
+          : `Moved "${trim(before?.title)}"`,
       );
       if (status === "done" && before?.status !== "done") {
         soundComplete();
@@ -84,15 +90,20 @@ export function useTasks() {
 
   const deleteTask = useCallback(
     (id: string) => {
-      persist(loadTasks().filter((t) => t.id !== id));
+      const before = loadTasks().find((t) => t.id === id);
+      persist(
+        loadTasks().filter((t) => t.id !== id),
+        `Deleted "${trim(before?.title)}"`,
+      );
     },
     [persist],
   );
 
   const bulkUpdate = useCallback(
-    (patches: Record<string, Partial<Task>>) => {
+    (patches: Record<string, Partial<Task>>, label = "Bulk change") => {
       persist(
         loadTasks().map((t) => (patches[t.id] ? { ...t, ...patches[t.id] } : t)),
+        label,
       );
     },
     [persist],
@@ -120,3 +131,18 @@ export function useTasks() {
   };
 }
 
+function trim(title?: string): string {
+  if (!title) return "task";
+  return title.length > 32 ? `${title.slice(0, 31)}…` : title;
+}
+
+function undoLabelFor(before: Task | undefined, patch: Partial<Task>): string {
+  const name = trim(before?.title);
+  if (patch.archived === true) return `Let go of "${name}"`;
+  if (patch.archived === false) return `Brought back "${name}"`;
+  if (patch.status === "done") return `Completed "${name}"`;
+  if (patch.due !== undefined) return `Re-dated "${name}"`;
+  if (patch.scheduledStart !== undefined) return `Rescheduled "${name}"`;
+  if (patch.myDay !== undefined) return `Changed My Day for "${name}"`;
+  return `Edited "${name}"`;
+}

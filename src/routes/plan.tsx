@@ -211,7 +211,7 @@ function PlanPage() {
         due: key,
       };
     }
-    if (Object.keys(patches).length) bulkUpdate(patches);
+    if (Object.keys(patches).length) bulkUpdate(patches, "Auto-scheduled the day");
   };
 
   return (

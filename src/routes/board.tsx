@@ -247,7 +247,7 @@ function BoardPage() {
         if (Object.keys(patch).length > 0) patches[t.id] = patch;
       });
     }
-    if (Object.keys(patches).length > 0) bulkUpdate(patches);
+    if (Object.keys(patches).length > 0) bulkUpdate(patches, "Reordered the board");
     if (container === "done" && tasks.find((t) => t.id === activeIdStr)?.status !== "done") {
       soundComplete();
       celebrate();

@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { taskDialogStore } from "@/lib/tasks/dialog-store";
 import { captureStore } from "@/lib/tasks/capture-store";
 import { areaStore } from "@/lib/tasks/areas";
+import { undoStore } from "@/lib/tasks/undo";
 
 
 import { playfulStore } from "@/lib/playful/store";
@@ -92,6 +93,12 @@ export function useKeybindings(onShowHelp: () => void) {
           e.preventDefault();
           captureStore.open();
           return;
+        case "u": {
+          e.preventDefault();
+          const undone = undoStore.undo();
+          toast(undone ? `Undone · ${undone}` : "Nothing to undo");
+          return;
+        }
         case "a": {
           e.preventDefault();
           const next = areaStore.cycleFilter();

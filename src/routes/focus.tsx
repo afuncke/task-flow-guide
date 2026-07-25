@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTasks } from "@/hooks/use-tasks";
 import { useAreas } from "@/hooks/use-areas";
+import { useTimeOfDay } from "@/lib/time-of-day";
 import { matchesArea } from "@/lib/tasks/areas";
 import { useContextState } from "@/hooks/use-context-state";
 import { rankTasks, urgency } from "@/lib/tasks/urgency";
@@ -36,6 +37,7 @@ export const Route = createFileRoute("/focus")({
 function FocusPage() {
   const { tasks, aliveTasks, hydrated, addTask, updateTask, setStatus, deleteTask } = useTasks();
   const { filter: areaFilter } = useAreas();
+  const { meta } = useTimeOfDay();
   const { currentState, stored } = useContextState();
 
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -214,7 +216,13 @@ function FocusPage() {
           </div>
 
 
-          {upNext.length > 0 && (
+          {meta.detail === 1 && (
+            <p className="mt-8 text-xs text-muted-foreground">
+              It's late — one thing, or none at all. The rest keeps until morning.
+            </p>
+          )}
+
+          {meta.detail > 1 && upNext.length > 0 && (
             <Collapsible open={upNextOpen} onOpenChange={setUpNextOpen} className="mt-10">
               <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
                 <ChevronRight
