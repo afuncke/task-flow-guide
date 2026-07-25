@@ -34,6 +34,8 @@ export interface Task {
   areaId?: string; // Area of Responsibility (Health, Work, Family…)
 
   /* ---- GTD ---- */
+  bucket?: Bucket; // undefined = "next" (clarified next action)
+
 
   clarifiedAt?: string; // ISO — when it left the inbox
   isProject?: boolean; // an outcome needing more than one step
