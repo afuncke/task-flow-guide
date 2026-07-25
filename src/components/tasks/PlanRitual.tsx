@@ -109,8 +109,14 @@ export function PlanRitual({
     (n, t) => n + (t.scheduledDuration ?? 30),
     0,
   );
+  // Meetings and appointments already own part of the day.
+  const { events } = useEvents();
+  const eventMinutes = useMemo(
+    () => eventMinutesInWindow(events, todayKey, stored.schedule),
+    [events, todayKey, stored.schedule],
+  );
   const workWindowMin =
-    (stored.schedule.end - stored.schedule.start) * 60;
+    (stored.schedule.end - stored.schedule.start) * 60 - eventMinutes;
 
   const overflow = totalPickedMin > workWindowMin;
 
@@ -121,9 +127,15 @@ export function PlanRitual({
     [pickedTasks],
   );
   const budget = useMemo(
-    () => dayBudget(openPicks, stored.schedule, { factor, isToday: true }),
-    [openPicks, stored.schedule, factor],
+    () =>
+      dayBudget(openPicks, stored.schedule, {
+        factor,
+        isToday: true,
+        busyMinutes: eventMinutes,
+      }),
+    [openPicks, stored.schedule, factor, eventMinutes],
   );
+
   const split = useMemo(
     () => areaSplit(openPicks, tasks, areas, factor),
     [openPicks, tasks, areas, factor],
