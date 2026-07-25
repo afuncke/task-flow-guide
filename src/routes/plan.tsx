@@ -449,6 +449,11 @@ function PlanPage() {
                 Planned
               </span>
             )}
+            {dayClosed && (
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                Closed
+              </span>
+            )}
           </div>
           <p className="text-xs text-muted-foreground">
             {scheduled.length} block{scheduled.length === 1 ? "" : "s"} ·{" "}
@@ -464,7 +469,14 @@ function PlanPage() {
               {estimateNote(insight)}
             </p>
           )}
+          {committedTasks.length > 0 && (
+            <div className="mt-2 max-w-md space-y-2">
+              <CapacityMeter budget={budget} />
+              <AreaBalance split={split} untouched={untouched} />
+            </div>
+          )}
         </div>
+
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-md border p-0.5 text-xs">
             <button
