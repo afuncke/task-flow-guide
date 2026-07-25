@@ -218,6 +218,37 @@ function PlanPage() {
   const workWindowMin = (stored.schedule.end - stored.schedule.start) * 60;
   const overCapacity = scheduledMin > workWindowMin;
 
+  /* --- Live capacity budget + area balance for what's committed today --- */
+  const committedTasks = useMemo(() => {
+    const seen = new Map<string, Task>();
+    for (const s of scheduled) if (!seen.has(s.task.id)) seen.set(s.task.id, s.task);
+    for (const t of needsSlot) if (!seen.has(t.id)) seen.set(t.id, t);
+    return [...seen.values()].filter((t) => t.status !== "done");
+  }, [scheduled, needsSlot]);
+
+  const budget = useMemo(
+    () =>
+      dayBudget(committedTasks, stored.schedule, {
+        factor: insight.factor,
+        isToday: dayIsToday,
+      }),
+    [committedTasks, stored.schedule, insight.factor, dayIsToday],
+  );
+
+  const split = useMemo(
+    () => areaSplit(committedTasks, allTasks, areas, insight.factor),
+    [committedTasks, allTasks, areas, insight.factor],
+  );
+
+  const untouched = useMemo(
+    () => untouchedAreas(split, areas, allTasks),
+    [split, areas, allTasks],
+  );
+
+  const isEvening = dayIsToday && ["evening", "night"].includes(phaseAt());
+  const dayClosed = dayIsToday && isShutdown(todayKey);
+
+
   const overdue = useMemo(
     () =>
       tasks
