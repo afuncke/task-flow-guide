@@ -3,6 +3,13 @@ import type { TaskContext } from "./context";
 export type TaskStatus = "todo" | "doing" | "done";
 export type TaskPriority = "H" | "M" | "L" | null;
 
+/**
+ * GTD bucket. `next` = a clarified, actionable next action (the default so
+ * legacy tasks keep working). `inbox` = captured but not yet clarified.
+ */
+export type Bucket = "inbox" | "next" | "waiting" | "someday";
+
+
 export interface Task {
   id: string;
   title: string;
