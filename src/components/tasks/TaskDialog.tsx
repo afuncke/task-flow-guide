@@ -34,6 +34,8 @@ import {
   type TaskContext,
   type WorkWindow,
 } from "@/lib/tasks/context";
+import { useAreas } from "@/hooks/use-areas";
+import { areaColor } from "@/lib/tasks/areas";
 
 export interface TaskDialogProps {
   open: boolean;
@@ -49,9 +51,11 @@ export interface TaskDialogProps {
     due?: string;
     context?: TaskContext;
     scheduledDuration?: number;
+    areaId?: string;
   }) => void;
   onDelete?: () => void;
 }
+
 
 const DURATION_PRESETS = [15, 30, 45, 60, 90];
 
@@ -64,8 +68,10 @@ export function TaskDialog({
   onSave,
   onDelete,
 }: TaskDialogProps) {
+  const { areas } = useAreas();
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
+  const [areaId, setAreaId] = useState<string>("none");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [priority, setPriority] = useState<TaskPriority>(null);
@@ -75,6 +81,7 @@ export function TaskDialog({
   const [ctxEnergy, setCtxEnergy] = useState<Energy>("any");
   const [ctxDuration, setCtxDuration] = useState<Duration>("any");
   const [ctxWorkWindow, setCtxWorkWindow] = useState<WorkWindow>("any");
+
 
   useEffect(() => {
     if (open) {
