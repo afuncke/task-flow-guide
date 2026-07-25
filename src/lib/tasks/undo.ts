@@ -20,7 +20,8 @@ const MAX = 25;
 /** How long the undo bar stays on screen. */
 export const UNDO_WINDOW_MS = 8000;
 
-let stack: UndoEntry[] = [];
+const EMPTY: UndoEntry[] = [];
+let stack: UndoEntry[] = EMPTY;
 const listeners = new Set<() => void>();
 
 function emit() {
@@ -38,7 +39,7 @@ export const undoStore = {
     return stack;
   },
   getServerSnapshot(): UndoEntry[] {
-    return [];
+    return EMPTY;
   },
   /** Record the state *before* a change. Call right before writing. */
   push(label: string, snapshot: Task[] = loadTasks()) {
@@ -62,7 +63,7 @@ export const undoStore = {
     emit();
   },
   clear() {
-    stack = [];
+    stack = EMPTY;
     emit();
   },
 };
