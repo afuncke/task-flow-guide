@@ -167,18 +167,22 @@ export function PlanRitual({
       if (!t.scheduledStart) return true;
       return isoDate(new Date(t.scheduledStart)) !== todayKey;
     });
-    // Existing busy = picked tasks already scheduled today
-    const busy = pickedTasks
-      .filter((t) => t.scheduledStart && isoDate(new Date(t.scheduledStart)) === todayKey)
-      .map((t) => {
-        const d = new Date(t.scheduledStart!);
-        const startMin = d.getHours() * 60 + d.getMinutes();
-        return { startMin, endMin: startMin + (t.scheduledDuration ?? 30) };
-      });
+    // Existing busy = today's meetings plus picks already scheduled today
+    const busy = [
+      ...eventBusyRanges(events, todayKey),
+      ...pickedTasks
+        .filter((t) => t.scheduledStart && isoDate(new Date(t.scheduledStart)) === todayKey)
+        .map((t) => {
+          const d = new Date(t.scheduledStart!);
+          const startMin = d.getHours() * 60 + d.getMinutes();
+          return { startMin, endMin: startMin + (t.scheduledDuration ?? 30) };
+        }),
+    ];
 
     const { blocks, unplaced } = autoSchedule(candidates, stored.schedule, busy, {
       factor: estimateInsight(tasks).factor,
     });
+
     const patches: Record<string, Partial<Task>> = {};
     for (const [id, list] of Object.entries(blocks)) {
       if (!list.length) continue;
