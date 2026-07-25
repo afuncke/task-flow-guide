@@ -292,7 +292,7 @@ function BoardPage() {
                   } else if (col.id === "focused") {
                     addTask({ ...base, status: "doing" });
                   } else if (col.id === "myday") {
-                    addTask({ ...base, status: "todo", myDay: true });
+                    addTask({ ...base, status: "todo", myDay: today });
                   } else {
                     addTask({ ...base, status: "todo" });
                   }
