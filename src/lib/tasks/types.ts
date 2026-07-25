@@ -19,4 +19,7 @@ export interface Task {
   scheduledDuration?: number; // minutes
   myDay?: string; // ISO date the user pinned this task to (separate from due)
   actualDuration?: number; // minutes actually spent, recorded by focus timer
+  rescheduleCount?: number; // # times this task has been moved to a new day
+  archived?: boolean; // "let it go" — hidden from lists but not deleted
+  archivedAt?: string; // ISO
 }
