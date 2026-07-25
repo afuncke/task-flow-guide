@@ -627,6 +627,14 @@ function PlanPage() {
             </Button>
           )}
           <Button
+            variant="outline"
+            size="sm"
+            onClick={() => openNewEvent()}
+            title="Add a meeting or appointment (m)"
+          >
+            <CalendarClock className="mr-1 h-3.5 w-3.5" /> Commitment
+          </Button>
+          <Button
             size="sm"
             onClick={runAutoScheduleForDay}
             disabled={needsSlot.length === 0}
@@ -634,6 +642,7 @@ function PlanPage() {
           >
             <Sparkles className="mr-1 h-3.5 w-3.5" /> Auto-schedule
           </Button>
+
           <div className="flex items-center gap-1">
             <Button variant="outline" size="sm" onClick={() => shiftDay(-1)}>
               <ChevronLeft className="h-4 w-4" />
