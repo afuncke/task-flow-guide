@@ -4,10 +4,12 @@ const KEY = "shenas.plan.v1";
 
 interface PlanState {
   planned: Record<string, boolean>; // dateKey -> ritual completed
+  shutdown: Record<string, boolean>; // dateKey -> day deliberately closed
   autoReplan: boolean; // keep today's plan up to date as things change
 }
 
-const DEFAULT: PlanState = { planned: {}, autoReplan: true };
+const DEFAULT: PlanState = { planned: {}, shutdown: {}, autoReplan: true };
+
 
 const listeners = new Set<() => void>();
 function notify() {
