@@ -69,11 +69,12 @@ export function ShutdownRitual({
 
   const remaining = openToday.filter((t) => !handled[t.id]);
 
-  const clearDay = (id: string): Partial<Task> => ({
+  const clearDay = (): Partial<Task> => ({
     scheduledStart: undefined,
     sessions: undefined,
     myDay: undefined,
   });
+
 
   const carry = (t: Task) => {
     onBulkUpdate({
