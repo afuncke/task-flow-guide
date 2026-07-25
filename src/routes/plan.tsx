@@ -687,10 +687,27 @@ function PlanPage() {
           onSetDuration={setDuration}
           tasks={tasks}
           dayKey={key}
+          events={dayEvents}
+          onEditEvent={openEditEvent}
+          onNewEventAt={openNewEvent}
         />
       ) : (
         <WeekView day={day} tasks={tasks} onSelectDay={setDay} />
       )}
+
+      <EventDialog
+        open={eventOpen}
+        onOpenChange={setEventOpen}
+        dateKey={key}
+        event={editingEvent}
+        defaultStartMin={eventStartMin}
+        onSave={(data) => {
+          if (editingEvent) updateEvent(editingEvent.id, data);
+          else addEvent(data);
+        }}
+        onDelete={removeEvent}
+      />
+
 
       <PlanRitual
         open={ritualOpen}
