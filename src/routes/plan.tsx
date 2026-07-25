@@ -201,6 +201,15 @@ function PlanPage() {
       } else if (detail === "replan") setRitualOpen(true);
       else if (detail === "soft-landing") setSoftLandingOpen(true);
       else if (detail === "shutdown") setShutdownOpen(true);
+      else if (detail === "new-event") {
+        const now = new Date();
+        openNewEvent(
+          dateKey(now) === dateKey(day)
+            ? Math.round((now.getHours() * 60 + now.getMinutes()) / 15) * 15
+            : 9 * 60,
+        );
+      }
+
 
     };
     window.addEventListener("shenas:key", on);
