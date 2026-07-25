@@ -414,6 +414,11 @@ function PlanPage() {
               <> · {needsSlot.length} needs a slot</>
             )}
           </p>
+          {estimateNote(insight) && (
+            <p className="mt-0.5 text-[11px] text-muted-foreground/80">
+              {estimateNote(insight)}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-md border p-0.5 text-xs">
@@ -436,6 +441,19 @@ function PlanPage() {
               Week
             </button>
           </div>
+          <Button
+            variant={autoReplan ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => setAutoReplan(!autoReplan)}
+            title={
+              autoReplan
+                ? "The day re-packs itself as things change. Click to keep it fixed."
+                : "Let the day re-pack itself as things change."
+            }
+          >
+            <Repeat className="mr-1 h-3.5 w-3.5" />
+            {autoReplan ? "Keeps itself current" : "Fixed plan"}
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -488,6 +506,15 @@ function PlanPage() {
         </div>
       </div>
 
+      {dayIsToday && (
+        <DeadlineForecast
+          risk={risk}
+          todayKey={todayKey}
+          tasks={tasks}
+          onEase={easeDeadline}
+        />
+      )}
+
       {view === "day" ? (
         <DayView
           day={day}
@@ -497,6 +524,7 @@ function PlanPage() {
           onUpdateTask={updateTask}
           onSetStatus={setStatus}
           onUnschedule={unschedule}
+          onRemoveBlock={removeBlock}
           onSetDuration={setDuration}
           tasks={tasks}
           dayKey={key}
