@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTasks } from "@/hooks/use-tasks";
+import { useAreas } from "@/hooks/use-areas";
+import { matchesArea } from "@/lib/tasks/areas";
 import { useContextState } from "@/hooks/use-context-state";
 import { rankTasks } from "@/lib/tasks/urgency";
 import { contextFit } from "@/lib/tasks/context";

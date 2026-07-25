@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTasks } from "@/hooks/use-tasks";
+import { useAreas } from "@/hooks/use-areas";
+import { matchesArea } from "@/lib/tasks/areas";
 import { daysSince, nextActionOf, projectChildren } from "@/lib/tasks/gtd";
 import { taskDialogStore } from "@/lib/tasks/dialog-store";
 import type { Task } from "@/lib/tasks/types";
