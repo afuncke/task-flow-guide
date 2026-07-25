@@ -105,6 +105,24 @@ export function PlanRitual({
 
   const overflow = totalPickedMin > workWindowMin;
 
+  /* Live budget + area balance: feel the commitment while you're making it. */
+  const factor = useMemo(() => estimateInsight(tasks).factor, [tasks]);
+  const openPicks = useMemo(
+    () => pickedTasks.filter((t) => t.status !== "done"),
+    [pickedTasks],
+  );
+  const budget = useMemo(
+    () => dayBudget(openPicks, stored.schedule, { factor, isToday: true }),
+    [openPicks, stored.schedule, factor],
+  );
+  const split = useMemo(
+    () => areaSplit(openPicks, tasks, areas, factor),
+    [openPicks, tasks, areas, factor],
+  );
+  const untouched = useMemo(() => untouchedAreas(split, areas, tasks), [split, areas, tasks]);
+
+
+
   const commitRollover = (
     action: "keep" | "push-today" | "unschedule" | "done",
     id: string,
