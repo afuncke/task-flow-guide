@@ -34,6 +34,8 @@ import {
   type TaskContext,
   type WorkWindow,
 } from "@/lib/tasks/context";
+import { useAreas } from "@/hooks/use-areas";
+import { areaColor } from "@/lib/tasks/areas";
 
 export interface TaskDialogProps {
   open: boolean;
@@ -49,9 +51,11 @@ export interface TaskDialogProps {
     due?: string;
     context?: TaskContext;
     scheduledDuration?: number;
+    areaId?: string;
   }) => void;
   onDelete?: () => void;
 }
+
 
 const DURATION_PRESETS = [15, 30, 45, 60, 90];
 
@@ -64,8 +68,10 @@ export function TaskDialog({
   onSave,
   onDelete,
 }: TaskDialogProps) {
+  const { areas } = useAreas();
   const [title, setTitle] = useState("");
   const [notes, setNotes] = useState("");
+  const [areaId, setAreaId] = useState<string>("none");
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [priority, setPriority] = useState<TaskPriority>(null);
@@ -76,11 +82,14 @@ export function TaskDialog({
   const [ctxDuration, setCtxDuration] = useState<Duration>("any");
   const [ctxWorkWindow, setCtxWorkWindow] = useState<WorkWindow>("any");
 
+
   useEffect(() => {
     if (open) {
       setTitle(task?.title ?? "");
       setNotes(task?.notes ?? "");
+      setAreaId(task?.areaId ?? "none");
       setTags(task?.tags ?? []);
+
       setTagInput("");
       setPriority(task?.priority ?? null);
       setDue(task?.due ?? defaultDue ?? "");
@@ -120,6 +129,8 @@ export function TaskDialog({
     onSave({
       title: title.trim(),
       notes: notes.trim() || undefined,
+      areaId: areaId === "none" ? undefined : areaId,
+
       tags,
       priority,
       due: due || undefined,
@@ -163,7 +174,35 @@ export function TaskDialog({
           </div>
 
           <div className="space-y-1.5">
+            <Label>Area of responsibility</Label>
+            <Select value={areaId} onValueChange={setAreaId}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No area</SelectItem>
+                {areas.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    <span className="flex items-center gap-2">
+                      <span
+                        className="h-2 w-2 rounded-full"
+                        style={{ backgroundColor: areaColor(a.hue) }}
+                        aria-hidden
+                      />
+                      {a.name}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {task?.projectId && areaId === "none" && (
+              <p className="text-xs text-muted-foreground">Inherits its project's area.</p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
             <Label>Tags</Label>
+
             <div className="flex flex-wrap gap-1.5">
               {tags.map((t) => (
                 <TagChip key={t} tag={t} onRemove={() => setTags(tags.filter((x) => x !== t))} />

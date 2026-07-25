@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTasks } from "@/hooks/use-tasks";
+import { useAreas } from "@/hooks/use-areas";
+import { matchesArea } from "@/lib/tasks/areas";
 import { daysSince, nextActionOf, projectChildren } from "@/lib/tasks/gtd";
 import { taskDialogStore } from "@/lib/tasks/dialog-store";
 import type { Task } from "@/lib/tasks/types";
@@ -8,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DueBadge } from "@/components/tasks/DueBadge";
+import { AreaChip } from "@/components/tasks/AreaChip";
+
 import {
   ChevronDown,
   ChevronRight,
@@ -38,14 +42,42 @@ export const Route = createFileRoute("/projects")({
 });
 
 function ProjectsPage() {
-  const { projects, aliveTasks, waiting, someday, hydrated, addTask, updateTask, setStatus } =
-    useTasks();
+  const {
+    projects: allProjects,
+    aliveTasks,
+    waiting: allWaiting,
+    someday: allSomeday,
+    hydrated,
+    addTask,
+    updateTask,
+    setStatus,
+  } = useTasks();
+  const { filter: areaFilter } = useAreas();
   const [newProject, setNewProject] = useState("");
+
+  const inArea = (list: Task[]) =>
+    areaFilter ? list.filter((t) => matchesArea(t, aliveTasks, areaFilter)) : list;
+  const projects = useMemo(
+    () => inArea(allProjects),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allProjects, aliveTasks, areaFilter],
+  );
+  const waiting = useMemo(
+    () => inArea(allWaiting),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allWaiting, aliveTasks, areaFilter],
+  );
+  const someday = useMemo(
+    () => inArea(allSomeday),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allSomeday, aliveTasks, areaFilter],
+  );
 
   const stalled = useMemo(
     () => projects.filter((p) => !nextActionOf(p.id, aliveTasks)),
     [projects, aliveTasks],
   );
+
 
   if (!hydrated) return null;
 
@@ -193,6 +225,8 @@ function ProjectRow({
   onComplete: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const { areaById } = useAreas();
+
   const [draft, setDraft] = useState("");
   const children = projectChildren(project.id, all);
   const next = nextActionOf(project.id, all);
@@ -210,12 +244,16 @@ function ProjectRow({
           {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </button>
         <div className="min-w-0 flex-1">
-          <button
-            className="text-sm font-medium hover:underline"
-            onClick={() => taskDialogStore.openEdit(project)}
-          >
-            {project.title}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              className="text-sm font-medium hover:underline"
+              onClick={() => taskDialogStore.openEdit(project)}
+            >
+              {project.title}
+            </button>
+            <AreaChip area={areaById(project.areaId)} />
+          </div>
+
           <div className="mt-1 text-xs">
             {next ? (
               <span className="inline-flex items-center gap-1.5 text-muted-foreground">

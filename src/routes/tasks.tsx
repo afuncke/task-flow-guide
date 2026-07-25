@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTasks } from "@/hooks/use-tasks";
+import { useAreas } from "@/hooks/use-areas";
+import { matchesArea } from "@/lib/tasks/areas";
 import { useContextState } from "@/hooks/use-context-state";
 import { rankTasks, urgency } from "@/lib/tasks/urgency";
 import { contextFit } from "@/lib/tasks/context";
@@ -36,8 +38,10 @@ export const Route = createFileRoute("/tasks")({
 type SortKey = "urgency" | "due" | "created";
 
 function ListPage() {
-  const { tasks, hydrated, addTask, updateTask, setStatus, deleteTask } = useTasks();
+  const { tasks, aliveTasks, hydrated, addTask, updateTask, setStatus, deleteTask } = useTasks();
+  const { filter: areaFilter } = useAreas();
   const { currentState, stored } = useContextState();
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const [activeTags, setActiveTags] = useState<string[]>([]);
@@ -51,7 +55,9 @@ function ListPage() {
 
   const rows = useMemo(() => {
     let list = tasks;
+    if (areaFilter) list = list.filter((t) => matchesArea(t, aliveTasks, areaFilter));
     if (!showDone) list = list.filter((t) => t.status !== "done");
+
     if (activeTags.length > 0) {
       list = list.filter((t) => activeTags.every((tag) => t.tags.includes(tag)));
     }
@@ -63,7 +69,7 @@ function ListPage() {
       return [...list].sort((a, b) => (a.due ?? "9999").localeCompare(b.due ?? "9999"));
     }
     return [...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }, [tasks, activeTags, sort, showDone, stored.hideMismatches, currentState]);
+  }, [tasks, aliveTasks, areaFilter, activeTags, sort, showDone, stored.hideMismatches, currentState]);
 
   if (!hydrated) return null;
 

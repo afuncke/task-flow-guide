@@ -18,7 +18,9 @@ const NAV: Row[] = [
 const ACTIONS: Row[] = [
   { keys: ["c"], desc: "Capture to inbox" },
   { keys: ["n"], desc: "New task" },
+  { keys: ["a"], desc: "Cycle area filter" },
   { keys: ["s"], desc: "Jump to next scheduled block" },
+
 
   { keys: ["["], desc: "Previous day / month" },
   { keys: ["]"], desc: "Next day / month" },

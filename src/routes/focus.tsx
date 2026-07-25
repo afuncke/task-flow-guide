@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTasks } from "@/hooks/use-tasks";
+import { useAreas } from "@/hooks/use-areas";
+import { matchesArea } from "@/lib/tasks/areas";
 import { useContextState } from "@/hooks/use-context-state";
 import { rankTasks, urgency } from "@/lib/tasks/urgency";
 import { contextFit } from "@/lib/tasks/context";
@@ -32,15 +34,24 @@ export const Route = createFileRoute("/focus")({
 });
 
 function FocusPage() {
-  const { tasks, hydrated, addTask, updateTask, setStatus, deleteTask } = useTasks();
+  const { tasks, aliveTasks, hydrated, addTask, updateTask, setStatus, deleteTask } = useTasks();
+  const { filter: areaFilter } = useAreas();
   const { currentState, stored } = useContextState();
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const [skipped, setSkipped] = useState<string[]>([]);
   const [upNextOpen, setUpNextOpen] = useState(false);
   const [pinnedId, setPinnedId] = useState<string | null>(null);
 
-  const active = useMemo(() => tasks.filter((t) => t.status !== "done"), [tasks]);
+  const active = useMemo(
+    () =>
+      tasks.filter(
+        (t) => t.status !== "done" && (!areaFilter || matchesArea(t, aliveTasks, areaFilter)),
+      ),
+    [tasks, aliveTasks, areaFilter],
+  );
+
   const scoped = useMemo(
     () => (stored.hideMismatches ? active.filter((t) => contextFit(t, currentState)) : active),
     [active, currentState, stored.hideMismatches],

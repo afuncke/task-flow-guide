@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTasks } from "@/hooks/use-tasks";
+import { useAreas } from "@/hooks/use-areas";
+import { matchesArea } from "@/lib/tasks/areas";
 import { useContextState } from "@/hooks/use-context-state";
 import { rankTasks } from "@/lib/tasks/urgency";
 import { contextFit } from "@/lib/tasks/context";
@@ -96,9 +98,11 @@ function patchForColumn(col: BoardColumn, orig: Task, today: string): Partial<Ta
 }
 
 function BoardPage() {
-  const { tasks, allTasks, hydrated, addTask, updateTask, setStatus, deleteTask, bulkUpdate } =
+  const { tasks, allTasks, aliveTasks, hydrated, addTask, updateTask, setStatus, deleteTask, bulkUpdate } =
     useTasks();
+  const { filter: areaFilter } = useAreas();
   const { currentState, stored } = useContextState();
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const [activeTags, setActiveTags] = useState<string[]>([]);
@@ -116,6 +120,9 @@ function BoardPage() {
 
   const filtered = useMemo(() => {
     let list = tasks;
+    if (areaFilter) {
+      list = list.filter((t) => matchesArea(t, aliveTasks, areaFilter));
+    }
     if (activeTags.length > 0) {
       list = list.filter((t) => activeTags.every((tag) => t.tags.includes(tag)));
     }
@@ -123,7 +130,8 @@ function BoardPage() {
       list = list.filter((t) => contextFit(t, currentState));
     }
     return list;
-  }, [tasks, activeTags, stored.hideMismatches, currentState]);
+  }, [tasks, aliveTasks, areaFilter, activeTags, stored.hideMismatches, currentState]);
+
 
   const today = todayKey();
 
