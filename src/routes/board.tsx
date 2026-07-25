@@ -27,6 +27,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { celebrate } from "@/lib/playful/celebrate";
+import { soundComplete, soundDrop, soundPop } from "@/lib/playful/sound";
 
 export const Route = createFileRoute("/board")({
   head: () => ({
