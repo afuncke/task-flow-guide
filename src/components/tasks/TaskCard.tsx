@@ -2,7 +2,9 @@ import type { Task, TaskStatus } from "@/lib/tasks/types";
 import { TagChip } from "./TagChip";
 import { DueBadge } from "./DueBadge";
 import { UrgencyBadge } from "./UrgencyBadge";
+import { ContextChips } from "./ContextChips";
 import { urgency } from "@/lib/tasks/urgency";
+import { contextFit, type CurrentState } from "@/lib/tasks/context";
 import {
   DropdownMenu,
   DropdownMenuContent,
