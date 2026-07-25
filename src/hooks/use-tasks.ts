@@ -85,5 +85,6 @@ export function useTasks() {
     [persist],
   );
 
-  return { tasks, hydrated, addTask, updateTask, setStatus, deleteTask, bulkUpdate };
+  const visible = tasks.filter((t) => !t.archived);
+  return { tasks: visible, allTasks: tasks, hydrated, addTask, updateTask, setStatus, deleteTask, bulkUpdate };
 }

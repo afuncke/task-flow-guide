@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, Sparkles, X, RotateCcw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, X, RotateCcw, Heart } from "lucide-react";
 import { useTasks } from "@/hooks/use-tasks";
 import { useContextState } from "@/hooks/use-context-state";
 import { usePlanState } from "@/lib/tasks/plan-store";
@@ -17,6 +17,7 @@ import {
 import { TagChip } from "@/components/tasks/TagChip";
 import { DueBadge } from "@/components/tasks/DueBadge";
 import { PlanRitual } from "@/components/tasks/PlanRitual";
+import { SoftLandingWizard } from "@/components/tasks/SoftLandingWizard";
 import { taskDialogStore } from "@/lib/tasks/dialog-store";
 import { cn } from "@/lib/utils";
 
@@ -91,6 +92,7 @@ function PlanPage() {
   const [view, setView] = useState<ViewMode>("day");
   const [ritualOpen, setRitualOpen] = useState(false);
   const [ritualDismissedThisSession, setRitualDismissedThisSession] = useState(false);
+  const [softLandingOpen, setSoftLandingOpen] = useState(false);
 
   const todayKey = dateKey(new Date());
   const dayIsToday = dateKey(day) === todayKey;
@@ -115,6 +117,7 @@ function PlanPage() {
         d.setHours(0, 0, 0, 0);
         setDay(d);
       } else if (detail === "replan") setRitualOpen(true);
+      else if (detail === "soft-landing") setSoftLandingOpen(true);
     };
     window.addEventListener("shenas:key", on);
     return () => window.removeEventListener("shenas:key", on);
@@ -160,6 +163,14 @@ function PlanPage() {
   );
   const workWindowMin = (stored.schedule.end - stored.schedule.start) * 60;
   const overCapacity = scheduledMin > workWindowMin;
+
+  const overdue = useMemo(
+    () =>
+      tasks
+        .filter((t) => t.status !== "done" && t.due && t.due < todayKey)
+        .sort((a, b) => (a.due ?? "").localeCompare(b.due ?? "")),
+    [tasks, todayKey],
+  );
 
   const shiftDay = (delta: number) => {
     const d = new Date(day);
@@ -253,6 +264,20 @@ function PlanPage() {
           >
             <RotateCcw className="mr-1 h-3.5 w-3.5" /> Re-plan
           </Button>
+          {overdue.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSoftLandingOpen(true)}
+              title="Soft landing for overdue tasks (L)"
+              className="border-rose-500/40 text-rose-600 hover:bg-rose-500/10 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300"
+            >
+              <Heart className="mr-1 h-3.5 w-3.5" /> Soft landing
+              <span className="ml-1 rounded-full bg-rose-500/15 px-1.5 text-[10px]">
+                {overdue.length}
+              </span>
+            </Button>
+          )}
           <Button
             size="sm"
             onClick={runAutoScheduleForDay}
@@ -312,6 +337,22 @@ function PlanPage() {
         onBulkUpdate={bulkUpdate}
         onSetStatus={setStatus}
         onComplete={() => markPlanned(key, true)}
+      />
+
+      <SoftLandingWizard
+        open={softLandingOpen}
+        onOpenChange={setSoftLandingOpen}
+        overdue={overdue}
+        todayKey={todayKey}
+        onReschedule={(id, newDue) => {
+          const t = tasks.find((x) => x.id === id);
+          const rc = (t?.rescheduleCount ?? 0) + 1;
+          updateTask(id, { due: newDue, rescheduleCount: rc, scheduledStart: undefined });
+        }}
+        onShrink={(id, patch) => updateTask(id, patch)}
+        onArchive={(id) =>
+          updateTask(id, { archived: true, archivedAt: new Date().toISOString() })
+        }
       />
     </div>
   );
