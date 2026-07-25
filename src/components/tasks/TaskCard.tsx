@@ -3,8 +3,11 @@ import { TagChip } from "./TagChip";
 import { DueBadge } from "./DueBadge";
 import { UrgencyBadge } from "./UrgencyBadge";
 import { ContextChips } from "./ContextChips";
+import { AreaChip } from "./AreaChip";
+import { useAreas } from "@/hooks/use-areas";
 import { urgency } from "@/lib/tasks/urgency";
 import { contextFit, type CurrentState } from "@/lib/tasks/context";
+
 import {
   DropdownMenu,
   DropdownMenuContent,
