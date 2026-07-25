@@ -7,6 +7,11 @@ import { rankTasks } from "@/lib/tasks/urgency";
 import { useContextState } from "@/hooks/use-context-state";
 import { autoSchedule, minutesToISO } from "@/lib/tasks/auto-schedule";
 import { estimateInsight } from "@/lib/tasks/estimates";
+import { dayBudget, areaSplit, untouchedAreas } from "@/lib/tasks/day-budget";
+import { CapacityMeter } from "./CapacityMeter";
+import { AreaBalance } from "./AreaBalance";
+import { useAreas } from "@/hooks/use-areas";
+
 import { DueBadge } from "./DueBadge";
 import { TagChip } from "./TagChip";
 import { cn } from "@/lib/utils";
