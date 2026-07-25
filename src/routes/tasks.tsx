@@ -69,7 +69,7 @@ function ListPage() {
       return [...list].sort((a, b) => (a.due ?? "9999").localeCompare(b.due ?? "9999"));
     }
     return [...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }, [tasks, activeTags, sort, showDone, stored.hideMismatches, currentState]);
+  }, [tasks, aliveTasks, areaFilter, activeTags, sort, showDone, stored.hideMismatches, currentState]);
 
   if (!hydrated) return null;
 
