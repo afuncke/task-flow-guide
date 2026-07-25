@@ -1,6 +1,10 @@
 import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { taskDialogStore } from "@/lib/tasks/dialog-store";
+import { playfulStore } from "@/lib/playful/store";
+import { celebrate, toast } from "@/lib/playful/celebrate";
+import { soundSparkle } from "@/lib/playful/sound";
+import { COPY } from "@/lib/playful/copy";
 
 const LEADER_TIMEOUT = 800;
 
