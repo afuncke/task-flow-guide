@@ -9,6 +9,13 @@ export type TaskPriority = "H" | "M" | "L" | null;
  */
 export type Bucket = "inbox" | "next" | "waiting" | "someday";
 
+/** A checklist step inside one action. Not a task: no dates, no urgency. */
+export interface Subtask {
+  id: string;
+  title: string;
+  done: boolean;
+}
+
 
 export interface Task {
   id: string;
@@ -31,6 +38,7 @@ export interface Task {
   rescheduleCount?: number; // # times this task has been moved to a new day
   archived?: boolean; // "let it go" — hidden from lists but not deleted
   archivedAt?: string; // ISO
+  subtasks?: Subtask[]; // lightweight checklist, not promoted to a project
 
   /* ---- Horizons of focus ---- */
   areaId?: string; // Area of Responsibility (Health, Work, Family…)
