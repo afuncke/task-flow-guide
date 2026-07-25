@@ -231,7 +231,7 @@ function BoardPage() {
       finalMap[col].forEach((t, i) => {
         const orig = tasks.find((x) => x.id === t.id);
         if (!orig) return;
-        const patch = patchForColumn(col, orig);
+        const patch = patchForColumn(col, orig, today);
         if (orig.order !== i) patch.order = i;
         if (Object.keys(patch).length > 0) patches[t.id] = patch;
       });
