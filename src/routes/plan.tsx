@@ -769,6 +769,9 @@ function DayView({
   onRemoveBlock,
   onSetDuration,
   tasks,
+  events,
+  onEditEvent,
+  onNewEventAt,
 }: {
   day: Date;
   dayKey: string;
@@ -781,7 +784,11 @@ function DayView({
   onRemoveBlock: (task: Task, partIndex: number) => void;
   onSetDuration: (id: string, m: number) => void;
   tasks: Task[];
+  events: CalEvent[];
+  onEditEvent: (e: CalEvent) => void;
+  onNewEventAt: (startMin: number) => void;
 }) {
+
   const gridRef = useRef<HTMLDivElement>(null);
   const [dragOverSlot, setDragOverSlot] = useState<number | null>(null);
   const [resizing, setResizing] = useState<{
