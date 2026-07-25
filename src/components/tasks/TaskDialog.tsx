@@ -18,7 +18,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TagChip } from "./TagChip";
-import type { Task, TaskPriority } from "@/lib/tasks/types";
+import { SubtaskList } from "./SubtaskList";
+import type { Subtask, Task, TaskPriority } from "@/lib/tasks/types";
 import {
   DURATIONS,
   DURATION_LABEL,
@@ -52,6 +53,7 @@ export interface TaskDialogProps {
     context?: TaskContext;
     scheduledDuration?: number;
     areaId?: string;
+    subtasks?: Subtask[];
   }) => void;
   onDelete?: () => void;
 }
@@ -81,6 +83,7 @@ export function TaskDialog({
   const [ctxEnergy, setCtxEnergy] = useState<Energy>("any");
   const [ctxDuration, setCtxDuration] = useState<Duration>("any");
   const [ctxWorkWindow, setCtxWorkWindow] = useState<WorkWindow>("any");
+  const [subtasks, setSubtasks] = useState<Subtask[]>([]);
 
 
   useEffect(() => {
@@ -98,6 +101,7 @@ export function TaskDialog({
       setCtxEnergy(task?.context?.energy ?? "any");
       setCtxDuration(task?.context?.duration ?? "any");
       setCtxWorkWindow(task?.context?.workWindow ?? "any");
+      setSubtasks(task?.subtasks ?? []);
     }
   }, [open, task, defaultDue]);
 
@@ -136,6 +140,7 @@ export function TaskDialog({
       due: due || undefined,
       context: hasCtx ? context : undefined,
       scheduledDuration: typeof duration === "number" && duration > 0 ? duration : undefined,
+      subtasks: subtasks.filter((s) => s.title.trim()),
     });
     onOpenChange(false);
   };
@@ -172,6 +177,13 @@ export function TaskDialog({
               placeholder="Optional context"
             />
           </div>
+
+          <div className="space-y-1.5">
+            <Label>Steps</Label>
+            <SubtaskList value={subtasks} onChange={setSubtasks} />
+          </div>
+
+
 
           <div className="space-y-1.5">
             <Label>Area of responsibility</Label>

@@ -6,6 +6,7 @@ import { ContextChips } from "./ContextChips";
 import { AreaChip } from "./AreaChip";
 import { useAreas } from "@/hooks/use-areas";
 import { urgency } from "@/lib/tasks/urgency";
+import { subtaskProgress } from "@/lib/tasks/subtasks";
 import { contextFit, type CurrentState } from "@/lib/tasks/context";
 
 import {
@@ -16,7 +17,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal } from "lucide-react";
+import { ListChecks, MoreHorizontal } from "lucide-react";
 
 export function TaskCard({
   task,
@@ -32,6 +33,7 @@ export function TaskCard({
   currentState?: CurrentState;
 }) {
   const fits = currentState ? contextFit(task, currentState) : true;
+  const steps = subtaskProgress(task);
   const { areaById } = useAreas();
 
   return (
@@ -81,6 +83,15 @@ export function TaskCard({
         ))}
 
         <DueBadge due={task.due} />
+        {steps && (
+          <span
+            className="inline-flex items-center gap-1 rounded border px-1.5 text-[10px] text-muted-foreground"
+            title={`${steps.done} of ${steps.total} steps done`}
+          >
+            <ListChecks className="h-3 w-3" />
+            {steps.done}/{steps.total}
+          </span>
+        )}
         <ContextChips context={task.context} muted={!fits} />
         {task.priority && (
           <span className="text-[10px] font-semibold text-muted-foreground">
