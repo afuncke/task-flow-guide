@@ -164,6 +164,14 @@ function PlanPage() {
   const workWindowMin = (stored.schedule.end - stored.schedule.start) * 60;
   const overCapacity = scheduledMin > workWindowMin;
 
+  const overdue = useMemo(
+    () =>
+      tasks
+        .filter((t) => t.status !== "done" && t.due && t.due < todayKey)
+        .sort((a, b) => (a.due ?? "").localeCompare(b.due ?? "")),
+    [tasks, todayKey],
+  );
+
   const shiftDay = (delta: number) => {
     const d = new Date(day);
     d.setDate(d.getDate() + delta * (view === "week" ? 7 : 1));
@@ -256,6 +264,20 @@ function PlanPage() {
           >
             <RotateCcw className="mr-1 h-3.5 w-3.5" /> Re-plan
           </Button>
+          {overdue.length > 0 && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSoftLandingOpen(true)}
+              title="Soft landing for overdue tasks (L)"
+              className="border-rose-500/40 text-rose-600 hover:bg-rose-500/10 hover:text-rose-700 dark:text-rose-400 dark:hover:text-rose-300"
+            >
+              <Heart className="mr-1 h-3.5 w-3.5" /> Soft landing
+              <span className="ml-1 rounded-full bg-rose-500/15 px-1.5 text-[10px]">
+                {overdue.length}
+              </span>
+            </Button>
+          )}
           <Button
             size="sm"
             onClick={runAutoScheduleForDay}
@@ -315,6 +337,22 @@ function PlanPage() {
         onBulkUpdate={bulkUpdate}
         onSetStatus={setStatus}
         onComplete={() => markPlanned(key, true)}
+      />
+
+      <SoftLandingWizard
+        open={softLandingOpen}
+        onOpenChange={setSoftLandingOpen}
+        overdue={overdue}
+        todayKey={todayKey}
+        onReschedule={(id, newDue) => {
+          const t = tasks.find((x) => x.id === id);
+          const rc = (t?.rescheduleCount ?? 0) + 1;
+          updateTask(id, { due: newDue, rescheduleCount: rc, scheduledStart: undefined });
+        }}
+        onShrink={(id, patch) => updateTask(id, patch)}
+        onArchive={(id) =>
+          updateTask(id, { archived: true, archivedAt: new Date().toISOString() })
+        }
       />
     </div>
   );
