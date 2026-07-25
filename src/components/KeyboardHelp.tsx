@@ -15,6 +15,7 @@ const NAV: Row[] = [
 
 const ACTIONS: Row[] = [
   { keys: ["n"], desc: "New task" },
+  { keys: ["s"], desc: "Jump to next scheduled block" },
   { keys: ["["], desc: "Previous day / month" },
   { keys: ["]"], desc: "Next day / month" },
   { keys: ["T"], desc: "Jump to today" },

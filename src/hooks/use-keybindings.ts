@@ -97,6 +97,10 @@ export function useKeybindings(onShowHelp: () => void) {
           e.preventDefault();
           dispatch("replan");
           return;
+        case "s":
+          e.preventDefault();
+          dispatch("jump-scheduled");
+          return;
       }
     };
 

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTasks } from "@/hooks/use-tasks";
 import { useContextState } from "@/hooks/use-context-state";
@@ -17,7 +17,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronRight, Check, Play, Pause, Clock, SkipForward, Plus } from "lucide-react";
+import { CalendarClock, ChevronRight, Check, Play, Pause, Clock, SkipForward, Plus } from "lucide-react";
 
 export const Route = createFileRoute("/focus")({
   head: () => ({
@@ -38,6 +38,7 @@ function FocusPage() {
   const [editing, setEditing] = useState<Task | null>(null);
   const [skipped, setSkipped] = useState<string[]>([]);
   const [upNextOpen, setUpNextOpen] = useState(false);
+  const [pinnedId, setPinnedId] = useState<string | null>(null);
 
   const active = useMemo(() => tasks.filter((t) => t.status !== "done"), [tasks]);
   const scoped = useMemo(
@@ -45,9 +46,34 @@ function FocusPage() {
     [active, currentState, stored.hideMismatches],
   );
   const ranked = useMemo(() => rankTasks(scoped, currentState), [scoped, currentState]);
-  const visible = useMemo(() => ranked.filter((t) => !skipped.includes(t.id)), [ranked, skipped]);
+  const nextScheduled = useMemo(() => {
+    const now = Date.now();
+    return active
+      .filter((t) => t.scheduledStart && new Date(t.scheduledStart).getTime() + (t.scheduledDuration ?? 0) * 60_000 >= now)
+      .sort((a, b) => new Date(a.scheduledStart!).getTime() - new Date(b.scheduledStart!).getTime())[0];
+  }, [active]);
+  const visible = useMemo(() => {
+    const base = ranked.filter((t) => !skipped.includes(t.id));
+    if (pinnedId) {
+      const pinned = base.find((t) => t.id === pinnedId);
+      if (pinned) return [pinned, ...base.filter((t) => t.id !== pinnedId)];
+    }
+    return base;
+  }, [ranked, skipped, pinnedId]);
   const current = visible[0];
   const upNext = visible.slice(1, 4);
+
+  useEffect(() => {
+    const onKey = (e: Event) => {
+      const detail = (e as CustomEvent<string>).detail;
+      if (detail === "jump-scheduled" && nextScheduled) {
+        setSkipped([]);
+        setPinnedId(nextScheduled.id);
+      }
+    };
+    window.addEventListener("shenas:key", onKey);
+    return () => window.removeEventListener("shenas:key", onKey);
+  }, [nextScheduled]);
 
   const knownTags = useMemo(
     () => Array.from(new Set(tasks.flatMap((t) => t.tags))).sort(),
@@ -73,6 +99,28 @@ function FocusPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:py-16">
+      {nextScheduled && (
+        <button
+          onClick={() => {
+            setSkipped([]);
+            setPinnedId(nextScheduled.id);
+          }}
+          className={`mb-6 flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left text-sm transition-colors hover:bg-accent ${
+            current?.id === nextScheduled.id ? "border-primary/40 bg-primary/5" : ""
+          }`}
+          title="Jump to next scheduled block (s)"
+        >
+          <CalendarClock className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <div className="min-w-0 flex-1">
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Next scheduled · {formatWhen(nextScheduled.scheduledStart!)}
+              {nextScheduled.scheduledDuration ? ` · ${nextScheduled.scheduledDuration}m` : ""}
+            </div>
+            <div className="truncate font-medium text-foreground">{nextScheduled.title}</div>
+          </div>
+          <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">s</kbd>
+        </button>
+      )}
       {!current ? (
         <div className="text-center">
           <h1 className="text-2xl font-semibold">Nothing to do right now.</h1>
@@ -193,4 +241,21 @@ function FocusPage() {
       />
     </div>
   );
+}
+
+function formatWhen(iso: string): string {
+  const d = new Date(iso);
+  const now = new Date();
+  const sameDay = d.toDateString() === now.toDateString();
+  const time = d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  if (sameDay) {
+    const diffMin = Math.round((d.getTime() - now.getTime()) / 60_000);
+    if (diffMin >= -5 && diffMin <= 5) return `now · ${time}`;
+    if (diffMin > 5 && diffMin < 60) return `in ${diffMin}m · ${time}`;
+    return `today ${time}`;
+  }
+  const tomorrow = new Date(now);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  if (d.toDateString() === tomorrow.toDateString()) return `tomorrow ${time}`;
+  return `${d.toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" })} ${time}`;
 }
