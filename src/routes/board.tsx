@@ -123,9 +123,11 @@ function BoardPage() {
     return list;
   }, [tasks, activeTags, stored.hideMismatches, currentState]);
 
+  const today = todayKey();
+
   const baseByColumn = useMemo<ColumnMap>(() => {
     const map: ColumnMap = { backlog: [], myday: [], focused: [], done: [] };
-    for (const t of filtered) map[columnOf(t)].push(t);
+    for (const t of filtered) map[columnOf(t, today)].push(t);
     map.backlog = rankTasks(map.backlog, currentState);
     map.myday = rankTasks(map.myday, currentState);
     map.focused = rankTasks(map.focused, currentState);
@@ -136,7 +138,7 @@ function BoardPage() {
       return (b.completedAt ?? b.createdAt).localeCompare(a.completedAt ?? a.createdAt);
     });
     return map;
-  }, [filtered, currentState]);
+  }, [filtered, currentState, today]);
 
   const byColumn = override ?? baseByColumn;
 
