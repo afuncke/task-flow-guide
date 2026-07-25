@@ -105,7 +105,12 @@ export function areaActivity(areaId: string, tasks: Task[], all: Task[]): AreaAc
 export function quietAreas(areas: Area[], tasks: Task[]): { area: Area; activity: AreaActivity }[] {
   return areas
     .map((area) => ({ area, activity: areaActivity(area.id, tasks, tasks) }))
-    .filter(({ activity }) => activity.quietDays === undefined || activity.quietDays >= QUIET_AFTER_DAYS)
+    // An area with nothing in it at all isn't "neglected", it's just unused.
+    .filter(({ activity }) =>
+      activity.quietDays === undefined
+        ? activity.openCount > 0
+        : activity.quietDays >= QUIET_AFTER_DAYS,
+    )
     .sort((a, b) => (b.activity.quietDays ?? 9999) - (a.activity.quietDays ?? 9999));
 }
 

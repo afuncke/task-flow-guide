@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { ChevronLeft, ChevronRight, Sparkles, X, RotateCcw, Heart } from "lucide-react";
 import { useTasks } from "@/hooks/use-tasks";
+import { AreaRadar } from "@/components/tasks/AreaRadar";
 import { useContextState } from "@/hooks/use-context-state";
 import { usePlanState } from "@/lib/tasks/plan-store";
 import { autoSchedule, minutesToISO } from "@/lib/tasks/auto-schedule";
@@ -215,6 +216,7 @@ function PlanPage() {
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
+      <AreaRadar />
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
