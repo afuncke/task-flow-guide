@@ -8,7 +8,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { useEffect, useState, type ReactNode } from "react";
-import { Keyboard, Plus } from "lucide-react";
+import { Inbox, Keyboard, Plus } from "lucide-react";
 
 import appCss from "../styles.css?url";
 import { reportLovableError } from "../lib/lovable-error-reporting";
@@ -20,6 +20,10 @@ import { KeyboardHelp } from "@/components/KeyboardHelp";
 import { PlayfulToggle } from "@/components/PlayfulToggle";
 import { usePlayful } from "@/lib/playful/store";
 import { usePlayfulCopy } from "@/lib/playful/copy";
+import { captureStore } from "@/lib/tasks/capture-store";
+import { CaptureBar } from "@/components/tasks/CaptureBar";
+import { useTasks } from "@/hooks/use-tasks";
+
 
 function NotFoundComponent() {
   return (
