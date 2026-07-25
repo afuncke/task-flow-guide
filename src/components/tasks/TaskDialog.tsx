@@ -129,6 +129,8 @@ export function TaskDialog({
     onSave({
       title: title.trim(),
       notes: notes.trim() || undefined,
+      areaId: areaId === "none" ? undefined : areaId,
+
       tags,
       priority,
       due: due || undefined,
