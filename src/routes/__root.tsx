@@ -129,6 +129,7 @@ function RootComponent() {
               Shenas
             </Link>
             <NavLink to="/focus">Focus</NavLink>
+            <NavLink to="/plan">Plan</NavLink>
             <NavLink to="/board">Board</NavLink>
             <NavLink to="/calendar">Calendar</NavLink>
             <NavLink to="/tasks">All</NavLink>
