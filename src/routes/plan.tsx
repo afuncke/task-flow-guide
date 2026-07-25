@@ -577,17 +577,19 @@ function DayView({
   onUpdateTask,
   onSetStatus,
   onUnschedule,
+  onRemoveBlock,
   onSetDuration,
   tasks,
 }: {
   day: Date;
   dayKey: string;
-  scheduled: { task: Task; slot: number; slots: number }[];
+  scheduled: DayBlock[];
   needsSlot: Task[];
   unscheduled: Task[];
   onUpdateTask: (id: string, patch: Partial<Task>) => void;
   onSetStatus: (id: string, s: Task["status"]) => void;
   onUnschedule: (id: string) => void;
+  onRemoveBlock: (task: Task, partIndex: number) => void;
   onSetDuration: (id: string, m: number) => void;
   tasks: Task[];
 }) {
@@ -617,9 +619,21 @@ function DayView({
     if (!id) return;
     const slot = slotFromEvent(e);
     if (slot == null) return;
+    const task = tasks.find((t) => t.id === id);
+    const nextStart = slotToISO(day, slot);
+    // Keep any extra chunks in step with the block being moved.
+    let sessions = task?.sessions;
+    if (task?.scheduledStart && sessions?.length) {
+      const delta = new Date(nextStart).getTime() - new Date(task.scheduledStart).getTime();
+      sessions = sessions.map((b) => ({
+        ...b,
+        start: new Date(new Date(b.start).getTime() + delta).toISOString(),
+      }));
+    }
     onUpdateTask(id, {
-      scheduledStart: slotToISO(day, slot),
-      scheduledDuration: tasks.find((t) => t.id === id)?.scheduledDuration ?? 30,
+      scheduledStart: nextStart,
+      scheduledDuration: task?.scheduledDuration ?? 30,
+      sessions,
       due: dayKey,
       myDay: dayKey,
     });
