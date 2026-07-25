@@ -67,6 +67,10 @@ export function TaskDialog({
   const [tagInput, setTagInput] = useState("");
   const [priority, setPriority] = useState<TaskPriority>(null);
   const [due, setDue] = useState<string>("");
+  const [ctxLocation, setCtxLocation] = useState<Location>("anywhere");
+  const [ctxEnergy, setCtxEnergy] = useState<Energy>("any");
+  const [ctxDuration, setCtxDuration] = useState<Duration>("any");
+  const [ctxWorkWindow, setCtxWorkWindow] = useState<WorkWindow>("any");
 
   useEffect(() => {
     if (open) {
@@ -76,6 +80,10 @@ export function TaskDialog({
       setTagInput("");
       setPriority(task?.priority ?? null);
       setDue(task?.due ?? defaultDue ?? "");
+      setCtxLocation(task?.context?.location ?? "anywhere");
+      setCtxEnergy(task?.context?.energy ?? "any");
+      setCtxDuration(task?.context?.duration ?? "any");
+      setCtxWorkWindow(task?.context?.workWindow ?? "any");
     }
   }, [open, task, defaultDue]);
 
@@ -93,12 +101,24 @@ export function TaskDialog({
 
   const submit = () => {
     if (!title.trim()) return;
+    const context: TaskContext = {
+      location: ctxLocation,
+      energy: ctxEnergy,
+      duration: ctxDuration,
+      workWindow: ctxWorkWindow,
+    };
+    const hasCtx =
+      ctxLocation !== "anywhere" ||
+      ctxEnergy !== "any" ||
+      ctxDuration !== "any" ||
+      ctxWorkWindow !== "any";
     onSave({
       title: title.trim(),
       notes: notes.trim() || undefined,
       tags,
       priority,
       due: due || undefined,
+      context: hasCtx ? context : undefined,
     });
     onOpenChange(false);
   };
