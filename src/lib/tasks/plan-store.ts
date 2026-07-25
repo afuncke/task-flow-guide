@@ -4,9 +4,10 @@ const KEY = "shenas.plan.v1";
 
 interface PlanState {
   planned: Record<string, boolean>; // dateKey -> ritual completed
+  autoReplan: boolean; // keep today's plan up to date as things change
 }
 
-const DEFAULT: PlanState = { planned: {} };
+const DEFAULT: PlanState = { planned: {}, autoReplan: true };
 
 const listeners = new Set<() => void>();
 function notify() {
@@ -58,10 +59,23 @@ export function usePlanState() {
     notify();
   }, []);
 
+  const setAutoReplan = useCallback((val: boolean) => {
+    const next = { ...load(), autoReplan: val };
+    save(next);
+    setState(next);
+    notify();
+  }, []);
+
   const isPlanned = useCallback(
     (dateKey: string): boolean => Boolean(state.planned[dateKey]),
     [state],
   );
 
-  return { hydrated, isPlanned, markPlanned };
+  return {
+    hydrated,
+    isPlanned,
+    markPlanned,
+    autoReplan: state.autoReplan,
+    setAutoReplan,
+  };
 }
