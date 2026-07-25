@@ -519,6 +519,19 @@ function PlanPage() {
           >
             <RotateCcw className="mr-1 h-3.5 w-3.5" /> Re-plan
           </Button>
+          {dayIsToday && (
+            <Button
+              variant={isEvening && !dayClosed ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShutdownOpen(true)}
+              title="Close the day (E)"
+              className={cn(!isEvening && !dayClosed && "opacity-70")}
+            >
+              <Sunset className="mr-1 h-3.5 w-3.5" />
+              {dayClosed ? "Day closed" : "Close the day"}
+            </Button>
+          )}
+
           {overdue.length > 0 && (
             <Button
               variant="outline"
