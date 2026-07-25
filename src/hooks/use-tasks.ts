@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Task, TaskStatus } from "@/lib/tasks/types";
 import { STORAGE_KEY, loadTasks, newId, saveTasks } from "@/lib/tasks/storage";
+import { celebrate } from "@/lib/playful/celebrate";
+import { soundComplete } from "@/lib/playful/sound";
 
 const listeners = new Set<() => void>();
 function notify() {
@@ -47,13 +49,19 @@ export function useTasks() {
 
   const updateTask = useCallback(
     (id: string, patch: Partial<Task>) => {
+      const before = loadTasks().find((t) => t.id === id);
       persist(loadTasks().map((t) => (t.id === id ? { ...t, ...patch } : t)));
+      if (patch.status === "done" && before?.status !== "done") {
+        soundComplete();
+        celebrate();
+      }
     },
     [persist],
   );
 
   const setStatus = useCallback(
     (id: string, status: TaskStatus) => {
+      const before = loadTasks().find((t) => t.id === id);
       persist(
         loadTasks().map((t) =>
           t.id === id
@@ -65,6 +73,10 @@ export function useTasks() {
             : t,
         ),
       );
+      if (status === "done" && before?.status !== "done") {
+        soundComplete();
+        celebrate();
+      }
     },
     [persist],
   );

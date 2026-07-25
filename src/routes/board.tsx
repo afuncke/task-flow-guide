@@ -27,6 +27,8 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { ChevronDown, ChevronRight } from "lucide-react";
+import { celebrate } from "@/lib/playful/celebrate";
+import { soundComplete, soundDrop, soundPop } from "@/lib/playful/sound";
 
 export const Route = createFileRoute("/board")({
   head: () => ({
@@ -177,6 +179,7 @@ function BoardPage() {
   const handleDragStart = (e: DragStartEvent) => {
     setActiveId(String(e.active.id));
     setOverride(baseByColumn);
+    soundPop();
   };
 
   const handleDragOver = (e: DragOverEvent) => {
@@ -237,6 +240,12 @@ function BoardPage() {
       });
     }
     if (Object.keys(patches).length > 0) bulkUpdate(patches);
+    if (container === "done" && tasks.find((t) => t.id === activeIdStr)?.status !== "done") {
+      soundComplete();
+      celebrate();
+    } else {
+      soundDrop();
+    }
     setOverride(null);
   };
 

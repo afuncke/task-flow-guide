@@ -1,6 +1,10 @@
 import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { taskDialogStore } from "@/lib/tasks/dialog-store";
+import { playfulStore } from "@/lib/playful/store";
+import { celebrate, toast } from "@/lib/playful/celebrate";
+import { soundSparkle } from "@/lib/playful/sound";
+import { COPY } from "@/lib/playful/copy";
 
 const LEADER_TIMEOUT = 800;
 
@@ -105,6 +109,18 @@ export function useKeybindings(onShowHelp: () => void) {
           e.preventDefault();
           dispatch("soft-landing");
           return;
+        case "p": {
+          e.preventDefault();
+          const on = playfulStore.toggle();
+          if (on) {
+            soundSparkle();
+            celebrate({ x: window.innerWidth / 2, y: 80 }, { praise: false });
+            toast(COPY.playfulOn[1]);
+          } else {
+            toast(COPY.playfulOff[0]);
+          }
+          return;
+        }
       }
     };
 

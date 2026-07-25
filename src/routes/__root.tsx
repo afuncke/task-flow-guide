@@ -17,6 +17,9 @@ import { ContextBar } from "@/components/tasks/ContextBar";
 import { taskDialogStore } from "@/lib/tasks/dialog-store";
 import { useKeybindings } from "@/hooks/use-keybindings";
 import { KeyboardHelp } from "@/components/KeyboardHelp";
+import { PlayfulToggle } from "@/components/PlayfulToggle";
+import { usePlayful } from "@/lib/playful/store";
+import { usePlayfulCopy } from "@/lib/playful/copy";
 
 function NotFoundComponent() {
   return (
@@ -123,6 +126,8 @@ function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   const [helpOpen, setHelpOpen] = useState(false);
   useKeybindings(() => setHelpOpen(true));
+  const playful = usePlayful();
+  const c = usePlayfulCopy();
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -130,32 +135,38 @@ function RootComponent() {
         <header className="sticky top-0 z-40 border-b bg-background/80 backdrop-blur">
           <div className="mx-auto flex h-12 max-w-6xl items-center gap-1 px-4">
             <Link to="/plan" className="mr-4 text-sm font-semibold tracking-tight">
-              Shenas
+              {c("brand")}
             </Link>
-            <NavLink to="/plan">Plan</NavLink>
-            <NavLink to="/focus">Focus</NavLink>
-            <NavLink to="/board">Board</NavLink>
-            <NavLink to="/calendar">Calendar</NavLink>
-            <NavLink to="/tasks">All</NavLink>
-            <button
-              onClick={() => setHelpOpen(true)}
-              className="ml-auto rounded-md p-1.5 text-muted-foreground hover:text-foreground"
-              aria-label="Keyboard shortcuts"
-              title="Keyboard shortcuts (?)"
-            >
-              <Keyboard className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => taskDialogStore.openNew()}
-              className="inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90"
-              aria-label="New task"
-              title="New task (n)"
-            >
-              <Plus className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">New task</span>
-            </button>
+            <NavLink to="/plan">{c("plan")}</NavLink>
+            <NavLink to="/focus">{c("focus")}</NavLink>
+            <NavLink to="/board">{c("board")}</NavLink>
+            <NavLink to="/calendar">{c("calendar")}</NavLink>
+            <NavLink to="/tasks">{c("all")}</NavLink>
+            <div className="ml-auto flex items-center gap-1">
+              <PlayfulToggle />
+              <button
+                onClick={() => setHelpOpen(true)}
+                className="rounded-md p-1.5 text-muted-foreground hover:text-foreground"
+                aria-label="Keyboard shortcuts"
+                title="Keyboard shortcuts (?)"
+              >
+                <Keyboard className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => taskDialogStore.openNew()}
+                className={`inline-flex items-center gap-1 rounded-md bg-primary px-2.5 py-1 text-xs font-medium text-primary-foreground transition-colors hover:bg-primary/90 ${
+                  playful ? "playful-wiggle" : ""
+                }`}
+                aria-label="New task"
+                title="New task (n)"
+              >
+                <Plus className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">{c("newTask")}</span>
+              </button>
+            </div>
           </div>
         </header>
+
         <ContextBar />
         <Outlet />
         <GlobalTaskDialog />
