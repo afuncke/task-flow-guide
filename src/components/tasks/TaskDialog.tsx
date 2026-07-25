@@ -19,6 +19,21 @@ import {
 } from "@/components/ui/select";
 import { TagChip } from "./TagChip";
 import type { Task, TaskPriority } from "@/lib/tasks/types";
+import {
+  DURATIONS,
+  DURATION_LABEL,
+  ENERGIES,
+  ENERGY_LABEL,
+  LOCATIONS,
+  LOCATION_LABEL,
+  WORK_WINDOWS,
+  WORK_WINDOW_LABEL,
+  type Duration,
+  type Energy,
+  type Location,
+  type TaskContext,
+  type WorkWindow,
+} from "@/lib/tasks/context";
 
 export interface TaskDialogProps {
   open: boolean;
@@ -32,6 +47,7 @@ export interface TaskDialogProps {
     tags: string[];
     priority: TaskPriority;
     due?: string;
+    context?: TaskContext;
   }) => void;
   onDelete?: () => void;
 }
