@@ -120,6 +120,9 @@ function BoardPage() {
 
   const filtered = useMemo(() => {
     let list = tasks;
+    if (areaFilter) {
+      list = list.filter((t) => matchesArea(t, aliveTasks, areaFilter));
+    }
     if (activeTags.length > 0) {
       list = list.filter((t) => activeTags.every((tag) => t.tags.includes(tag)));
     }
@@ -127,7 +130,8 @@ function BoardPage() {
       list = list.filter((t) => contextFit(t, currentState));
     }
     return list;
-  }, [tasks, activeTags, stored.hideMismatches, currentState]);
+  }, [tasks, aliveTasks, areaFilter, activeTags, stored.hideMismatches, currentState]);
+
 
   const today = todayKey();
 
