@@ -212,12 +212,16 @@ function ProjectRow({
           {open ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
         </button>
         <div className="min-w-0 flex-1">
-          <button
-            className="text-sm font-medium hover:underline"
-            onClick={() => taskDialogStore.openEdit(project)}
-          >
-            {project.title}
-          </button>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              className="text-sm font-medium hover:underline"
+              onClick={() => taskDialogStore.openEdit(project)}
+            >
+              {project.title}
+            </button>
+            <AreaChip area={areaById(project.areaId)} />
+          </div>
+
           <div className="mt-1 text-xs">
             {next ? (
               <span className="inline-flex items-center gap-1.5 text-muted-foreground">
