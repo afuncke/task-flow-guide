@@ -1,6 +1,5 @@
 import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { taskDialogStore } from "@/lib/tasks/dialog-store";
 import { captureStore } from "@/lib/tasks/capture-store";
 import { areaStore } from "@/lib/tasks/areas";
 import { undoStore } from "@/lib/tasks/undo";

@@ -16,7 +16,6 @@ import { GlobalTaskDialog } from "@/components/tasks/GlobalTaskDialog";
 import { ContextBar } from "@/components/tasks/ContextBar";
 import { AreaBar } from "@/components/tasks/AreaBar";
 
-import { taskDialogStore } from "@/lib/tasks/dialog-store";
 import { useKeybindings } from "@/hooks/use-keybindings";
 import { KeyboardHelp } from "@/components/KeyboardHelp";
 import { PlayfulToggle } from "@/components/PlayfulToggle";
