@@ -83,6 +83,7 @@ export function TaskDialog({
   const [ctxEnergy, setCtxEnergy] = useState<Energy>("any");
   const [ctxDuration, setCtxDuration] = useState<Duration>("any");
   const [ctxWorkWindow, setCtxWorkWindow] = useState<WorkWindow>("any");
+  const [subtasks, setSubtasks] = useState<Subtask[]>([]);
 
 
   useEffect(() => {
@@ -100,6 +101,7 @@ export function TaskDialog({
       setCtxEnergy(task?.context?.energy ?? "any");
       setCtxDuration(task?.context?.duration ?? "any");
       setCtxWorkWindow(task?.context?.workWindow ?? "any");
+      setSubtasks(task?.subtasks ?? []);
     }
   }, [open, task, defaultDue]);
 
