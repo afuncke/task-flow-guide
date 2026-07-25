@@ -161,6 +161,16 @@ function FocusPage() {
             </p>
           )}
 
+          {(current.subtasks?.length ?? 0) > 0 && (
+            <div className="mt-4 max-w-md">
+              <SubtaskList
+                value={current.subtasks ?? []}
+                onChange={(next) => updateTask(current.id, { subtasks: next }, "Ticked a step")}
+                editable={false}
+              />
+            </div>
+          )}
+
           <div className="mt-4 flex flex-wrap items-center gap-1.5">
             {current.tags.map((t) => (
               <TagChip key={t} tag={t} />
@@ -173,6 +183,7 @@ function FocusPage() {
               </span>
             )}
           </div>
+
 
           <div className="mt-6 flex flex-wrap gap-2">
             <Button onClick={() => setStatus(current.id, "done")}>
