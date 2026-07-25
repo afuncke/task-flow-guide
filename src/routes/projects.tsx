@@ -42,14 +42,42 @@ export const Route = createFileRoute("/projects")({
 });
 
 function ProjectsPage() {
-  const { projects, aliveTasks, waiting, someday, hydrated, addTask, updateTask, setStatus } =
-    useTasks();
+  const {
+    projects: allProjects,
+    aliveTasks,
+    waiting: allWaiting,
+    someday: allSomeday,
+    hydrated,
+    addTask,
+    updateTask,
+    setStatus,
+  } = useTasks();
+  const { filter: areaFilter } = useAreas();
   const [newProject, setNewProject] = useState("");
+
+  const inArea = (list: Task[]) =>
+    areaFilter ? list.filter((t) => matchesArea(t, aliveTasks, areaFilter)) : list;
+  const projects = useMemo(
+    () => inArea(allProjects),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allProjects, aliveTasks, areaFilter],
+  );
+  const waiting = useMemo(
+    () => inArea(allWaiting),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allWaiting, aliveTasks, areaFilter],
+  );
+  const someday = useMemo(
+    () => inArea(allSomeday),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [allSomeday, aliveTasks, areaFilter],
+  );
 
   const stalled = useMemo(
     () => projects.filter((p) => !nextActionOf(p.id, aliveTasks)),
     [projects, aliveTasks],
   );
+
 
   if (!hydrated) return null;
 
