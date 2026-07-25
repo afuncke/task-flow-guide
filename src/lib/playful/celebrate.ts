@@ -21,10 +21,14 @@ export function praiseLine() {
  * Confetti burst + a floating praise line. No-op unless playful mode is on.
  * Uses the Web Animations API so no extra keyframes are needed.
  */
-export function celebrate(origin?: { x: number; y: number }) {
+export function celebrate(
+  origin?: { x: number; y: number },
+  opts: { praise?: boolean } = {},
+) {
   if (!isPlayful() || typeof document === "undefined") return;
+  const praise = opts.praise ?? true;
   if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) {
-    toast(praiseLine());
+    if (praise) toast(praiseLine());
     return;
   }
 
@@ -75,7 +79,7 @@ export function celebrate(origin?: { x: number; y: number }) {
   }
 
   window.setTimeout(() => layer.remove(), 1800);
-  toast(praiseLine());
+  if (praise) toast(praiseLine());
 }
 
 /** Floating playful toast. */

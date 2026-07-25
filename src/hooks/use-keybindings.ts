@@ -114,7 +114,7 @@ export function useKeybindings(onShowHelp: () => void) {
           const on = playfulStore.toggle();
           if (on) {
             soundSparkle();
-            celebrate({ x: window.innerWidth / 2, y: 80 });
+            celebrate({ x: window.innerWidth / 2, y: 80 }, { praise: false });
             toast(COPY.playfulOn[1]);
           } else {
             toast(COPY.playfulOff[0]);

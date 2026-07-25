@@ -12,7 +12,7 @@ export function PlayfulToggle() {
     playfulStore.set(next);
     if (next) {
       soundSparkle();
-      celebrate({ x: window.innerWidth - 60, y: 60 });
+      celebrate({ x: window.innerWidth - 60, y: 60 }, { praise: false });
       toast(COPY.playfulOn[1]);
     } else {
       toast(COPY.playfulOff[0]);
