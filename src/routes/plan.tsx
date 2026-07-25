@@ -356,8 +356,10 @@ function PlanPage() {
       const start = s.slot * SLOT_MIN + HOUR_START * 60;
       return { startMin: start, endMin: start + s.slots * SLOT_MIN };
     });
-    packDay([...needsSlot], busy, day, key, "Auto-scheduled the day");
+    // Meetings hold their ground — tasks pack around them.
+    packDay([...needsSlot], [...busy, ...eventBusy], day, key, "Auto-scheduled the day");
   };
+
 
   /**
    * Continuous reschedule — the plan keeps itself true.
