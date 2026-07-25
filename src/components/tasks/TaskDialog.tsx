@@ -216,6 +216,48 @@ export function TaskDialog({
           </div>
 
           <div className="space-y-1.5">
+            <Label htmlFor="duration">Estimated duration</Label>
+            <div className="flex flex-wrap items-center gap-1.5">
+              {DURATION_PRESETS.map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setDuration(m)}
+                  className={`rounded-md border px-2 py-1 text-xs transition-colors ${
+                    duration === m
+                      ? "border-primary bg-primary/10 text-foreground"
+                      : "text-muted-foreground hover:border-primary/40 hover:text-foreground"
+                  }`}
+                >
+                  {m}m
+                </button>
+              ))}
+              <Input
+                id="duration"
+                type="number"
+                min={1}
+                step={5}
+                value={duration === "" ? "" : duration}
+                onChange={(e) => {
+                  const v = e.target.value;
+                  setDuration(v === "" ? "" : Math.max(1, Number(v)));
+                }}
+                placeholder="Custom"
+                className="h-8 w-24 text-xs"
+              />
+              {duration !== "" && (
+                <button
+                  type="button"
+                  onClick={() => setDuration("")}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Clear
+                </button>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
             <Label className="text-xs uppercase tracking-wide text-muted-foreground">
               When it fits
             </Label>
