@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, Sparkles, X, RotateCcw, Heart } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, X, RotateCcw, Heart, Repeat } from "lucide-react";
 import { useTasks } from "@/hooks/use-tasks";
 import { AreaRadar } from "@/components/tasks/AreaRadar";
 import { useContextState } from "@/hooks/use-context-state";
 import { usePlanState } from "@/lib/tasks/plan-store";
-import { autoSchedule, minutesToISO } from "@/lib/tasks/auto-schedule";
+import { autoSchedule, minutesToISO, type BusyRange } from "@/lib/tasks/auto-schedule";
+import { estimateInsight, estimateNote } from "@/lib/tasks/estimates";
+import { forecastDeadlines } from "@/lib/tasks/forecast";
+import { DeadlineForecast } from "@/components/tasks/DeadlineForecast";
+import { toast } from "@/lib/playful/celebrate";
 import type { Task } from "@/lib/tasks/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -81,10 +85,35 @@ function formatMin(min: number): string {
 
 type ViewMode = "day" | "week";
 
+export interface DayBlock {
+  key: string;
+  task: Task;
+  slot: number;
+  slots: number;
+  partIndex: number;
+  partTotal: number;
+}
+
+/** Every block a task occupies: the first chunk plus any extra sessions. */
+export function taskBlocks(t: Task): { start: string; duration: number }[] {
+  const out: { start: string; duration: number }[] = [];
+  if (t.scheduledStart) {
+    out.push({ start: t.scheduledStart, duration: t.scheduledDuration ?? 30 });
+  }
+  for (const s of t.sessions ?? []) out.push(s);
+  return out.sort((a, b) => a.start.localeCompare(b.start));
+}
+
 function PlanPage() {
-  const { tasks, hydrated, updateTask, setStatus, bulkUpdate } = useTasks();
+  const { tasks, allTasks, hydrated, updateTask, setStatus, bulkUpdate } = useTasks();
   const { stored } = useContextState();
-  const { hydrated: planHydrated, isPlanned, markPlanned } = usePlanState();
+  const {
+    hydrated: planHydrated,
+    isPlanned,
+    markPlanned,
+    autoReplan,
+    setAutoReplan,
+  } = usePlanState();
   const [day, setDay] = useState(() => {
     const d = new Date();
     d.setHours(0, 0, 0, 0);
@@ -98,6 +127,9 @@ function PlanPage() {
   const todayKey = dateKey(new Date());
   const dayIsToday = dateKey(day) === todayKey;
   const key = dateKey(day);
+
+  // How long things really take, learned from finished work.
+  const insight = useMemo(() => estimateInsight(allTasks), [allTasks]);
 
   // Auto-open ritual once, when the day is today and not yet planned.
   useEffect(() => {
@@ -126,19 +158,29 @@ function PlanPage() {
   }, [day]);
 
   const { scheduled, needsSlot, unscheduled } = useMemo(() => {
-    const scheduled: { task: Task; slot: number; slots: number }[] = [];
+    const scheduled: DayBlock[] = [];
     const needsSlot: Task[] = [];
     const unscheduled: Task[] = [];
     for (const t of tasks) {
       if (t.status === "done") continue;
-      if (t.scheduledStart) {
-        const slot = isoToSlot(t.scheduledStart, day);
-        if (slot != null) {
-          const dur = Math.max(SLOT_MIN, t.scheduledDuration ?? 30);
-          const slots = Math.max(1, Math.round(dur / SLOT_MIN));
-          scheduled.push({ task: t, slot, slots });
-          continue;
-        }
+      const blocks = taskBlocks(t);
+      if (blocks.length > 0) {
+        let added = false;
+        blocks.forEach((b, i) => {
+          const slot = isoToSlot(b.start, day);
+          if (slot == null) return;
+          const dur = Math.max(SLOT_MIN, b.duration);
+          scheduled.push({
+            key: `${t.id}#${i}`,
+            task: t,
+            slot,
+            slots: Math.max(1, Math.round(dur / SLOT_MIN)),
+            partIndex: i,
+            partTotal: blocks.length,
+          });
+          added = true;
+        });
+        if (added) continue;
       }
       // Unscheduled bucket for this day: myDay pinned OR due here OR undue
       const pinnedHere = t.myDay === key;
@@ -158,10 +200,7 @@ function PlanPage() {
     return { scheduled, needsSlot, unscheduled };
   }, [tasks, day, key]);
 
-  const scheduledMin = scheduled.reduce(
-    (n, s) => n + (s.task.scheduledDuration ?? 30),
-    0,
-  );
+  const scheduledMin = scheduled.reduce((n, s) => n + s.slots * SLOT_MIN, 0);
   const workWindowMin = (stored.schedule.end - stored.schedule.start) * 60;
   const overCapacity = scheduledMin > workWindowMin;
 
@@ -173,11 +212,135 @@ function PlanPage() {
     [tasks, todayKey],
   );
 
+  // Deadline vs. scheduled time: warn while there's still room to choose.
+  const risk = useMemo(
+    () =>
+      forecastDeadlines(tasks, stored.schedule, { factor: insight.factor })[0] ?? null,
+    [tasks, stored.schedule, insight.factor],
+  );
+
   const shiftDay = (delta: number) => {
     const d = new Date(day);
     d.setDate(d.getDate() + delta * (view === "week" ? 7 : 1));
     setDay(d);
   };
+
+  const packDay = (
+    candidates: Task[],
+    busy: BusyRange[],
+    targetDay: Date,
+    targetKey: string,
+    label: string,
+    earliestMin?: number,
+  ): number => {
+    if (candidates.length === 0) return 0;
+    const { blocks } = autoSchedule(candidates, stored.schedule, busy, {
+      factor: insight.factor,
+      earliestMin,
+    });
+    const patches: Record<string, Partial<Task>> = {};
+    for (const [id, list] of Object.entries(blocks)) {
+      if (!list.length) continue;
+      patches[id] = {
+        scheduledStart: minutesToISO(targetDay, list[0].startMin),
+        scheduledDuration: list[0].duration,
+        sessions: list
+          .slice(1)
+          .map((b) => ({ start: minutesToISO(targetDay, b.startMin), duration: b.duration })),
+        myDay: targetKey,
+        due: targetKey,
+      };
+    }
+    const n = Object.keys(patches).length;
+    if (n) bulkUpdate(patches, label);
+    return n;
+  };
+
+  const runAutoScheduleForDay = () => {
+    const busy = scheduled.map((s) => {
+      const start = s.slot * SLOT_MIN + HOUR_START * 60;
+      return { startMin: start, endMin: start + s.slots * SLOT_MIN };
+    });
+    packDay([...needsSlot], busy, day, key, "Auto-scheduled the day");
+  };
+
+  /**
+   * Continuous reschedule — the plan keeps itself true.
+   *
+   * When something new lands on today, or a block slips into the past
+   * unfinished, the day quietly re-packs from now onward. Always undoable,
+   * never accusing.
+   */
+  const lastReplan = useRef<string>("");
+  useEffect(() => {
+    if (!hydrated || !planHydrated) return;
+    if (!autoReplan || !dayIsToday) return;
+
+    const timer = window.setTimeout(() => {
+      const now = new Date();
+      const nowMin = now.getHours() * 60 + now.getMinutes();
+      if (nowMin >= stored.schedule.end * 60) return;
+
+      const stale: Task[] = [];
+      const busy: BusyRange[] = [];
+      const fresh: Task[] = [];
+
+      for (const t of tasks) {
+        if (t.status === "done") continue;
+        const blocks = taskBlocks(t).filter(
+          (b) => dateKey(new Date(b.start)) === todayKey,
+        );
+        if (blocks.length === 0) {
+          if (!t.scheduledStart && (t.myDay === todayKey || t.due === todayKey)) {
+            fresh.push(t);
+          }
+          continue;
+        }
+        const ends = blocks.map(
+          (b) => new Date(b.start).getTime() + b.duration * 60_000,
+        );
+        const allPast = ends.every((e) => e <= now.getTime());
+        if (allPast && t.status !== "doing") {
+          stale.push(t);
+        } else {
+          for (const b of blocks) {
+            const s = new Date(b.start);
+            const startMin = s.getHours() * 60 + s.getMinutes();
+            busy.push({ startMin, endMin: startMin + b.duration });
+          }
+        }
+      }
+
+      const candidates = [...fresh, ...stale];
+      if (candidates.length === 0) return;
+
+      const signature = candidates
+        .map((t) => `${t.id}:${t.scheduledStart ?? "-"}:${t.scheduledDuration ?? 0}`)
+        .sort()
+        .join("|");
+      if (signature === lastReplan.current) return;
+      lastReplan.current = signature;
+
+      const moved = packDay(
+        candidates,
+        busy,
+        day,
+        todayKey,
+        "Plan updated",
+        nowMin,
+      );
+      if (moved > 0) {
+        toast(
+          stale.length > 0
+            ? "Plan updated — unfinished blocks moved ahead · u to undo"
+            : "Plan updated · u to undo",
+        );
+      }
+    }, 700);
+
+    return () => window.clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tasks, autoReplan, dayIsToday, hydrated, planHydrated, todayKey, insight.factor]);
 
   if (!hydrated || !planHydrated) return null;
 
@@ -188,31 +351,46 @@ function PlanPage() {
   });
 
   const unschedule = (id: string) => {
-    updateTask(id, { scheduledStart: undefined });
+    updateTask(id, { scheduledStart: undefined, sessions: undefined });
   };
 
   const setDuration = (id: string, minutes: number) => {
     updateTask(id, { scheduledDuration: minutes });
   };
 
-  const runAutoScheduleForDay = () => {
-    const candidates = [...needsSlot];
-    const busy = scheduled.map((s) => {
-      const start = s.slot * SLOT_MIN + HOUR_START * 60;
-      return { startMin: start, endMin: start + (s.task.scheduledDuration ?? 30) };
-    });
-    const { assignments } = autoSchedule(candidates, stored.schedule, busy);
-    const patches: Record<string, Partial<Task>> = {};
-    for (const [id, a] of Object.entries(assignments)) {
-      patches[id] = {
-        scheduledStart: minutesToISO(day, a.startMin),
-        scheduledDuration: a.duration,
-        myDay: key,
-        due: key,
-      };
+  const removeBlock = (task: Task, partIndex: number) => {
+    if (partIndex === 0) {
+      unschedule(task.id);
+      return;
     }
-    if (Object.keys(patches).length) bulkUpdate(patches, "Auto-scheduled the day");
+    const blocks = taskBlocks(task);
+    const kept = blocks.filter((_, i) => i !== partIndex);
+    updateTask(task.id, {
+      scheduledStart: kept[0]?.start,
+      scheduledDuration: kept[0]?.duration ?? task.scheduledDuration,
+      sessions: kept.slice(1),
+    });
   };
+
+  const easeDeadline = (id: string) => {
+    const t = tasks.find((x) => x.id === id);
+    if (!t?.due) return;
+    const d = new Date(`${t.due}T00:00:00`);
+    do {
+      d.setDate(d.getDate() + 1);
+    } while (!stored.schedule.days.includes(d.getDay()));
+    updateTask(
+      id,
+      {
+        due: dateKey(d),
+        scheduledStart: undefined,
+        sessions: undefined,
+        rescheduleCount: (t.rescheduleCount ?? 0) + 1,
+      },
+      `Gave "${t.title.slice(0, 24)}" more room`,
+    );
+  };
+
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-6">
@@ -236,6 +414,11 @@ function PlanPage() {
               <> · {needsSlot.length} needs a slot</>
             )}
           </p>
+          {estimateNote(insight) && (
+            <p className="mt-0.5 text-[11px] text-muted-foreground/80">
+              {estimateNote(insight)}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-md border p-0.5 text-xs">
@@ -258,6 +441,19 @@ function PlanPage() {
               Week
             </button>
           </div>
+          <Button
+            variant={autoReplan ? "secondary" : "outline"}
+            size="sm"
+            onClick={() => setAutoReplan(!autoReplan)}
+            title={
+              autoReplan
+                ? "The day re-packs itself as things change. Click to keep it fixed."
+                : "Let the day re-pack itself as things change."
+            }
+          >
+            <Repeat className="mr-1 h-3.5 w-3.5" />
+            {autoReplan ? "Keeps itself current" : "Fixed plan"}
+          </Button>
           <Button
             variant="outline"
             size="sm"
@@ -310,6 +506,15 @@ function PlanPage() {
         </div>
       </div>
 
+      {dayIsToday && (
+        <DeadlineForecast
+          risk={risk}
+          todayKey={todayKey}
+          tasks={tasks}
+          onEase={easeDeadline}
+        />
+      )}
+
       {view === "day" ? (
         <DayView
           day={day}
@@ -319,6 +524,7 @@ function PlanPage() {
           onUpdateTask={updateTask}
           onSetStatus={setStatus}
           onUnschedule={unschedule}
+          onRemoveBlock={removeBlock}
           onSetDuration={setDuration}
           tasks={tasks}
           dayKey={key}
@@ -371,17 +577,19 @@ function DayView({
   onUpdateTask,
   onSetStatus,
   onUnschedule,
+  onRemoveBlock,
   onSetDuration,
   tasks,
 }: {
   day: Date;
   dayKey: string;
-  scheduled: { task: Task; slot: number; slots: number }[];
+  scheduled: DayBlock[];
   needsSlot: Task[];
   unscheduled: Task[];
   onUpdateTask: (id: string, patch: Partial<Task>) => void;
   onSetStatus: (id: string, s: Task["status"]) => void;
   onUnschedule: (id: string) => void;
+  onRemoveBlock: (task: Task, partIndex: number) => void;
   onSetDuration: (id: string, m: number) => void;
   tasks: Task[];
 }) {
@@ -389,6 +597,7 @@ function DayView({
   const [dragOverSlot, setDragOverSlot] = useState<number | null>(null);
   const [resizing, setResizing] = useState<{
     id: string;
+    taskId: string;
     startSlot: number;
     startY: number;
     origSlots: number;
@@ -411,9 +620,21 @@ function DayView({
     if (!id) return;
     const slot = slotFromEvent(e);
     if (slot == null) return;
+    const task = tasks.find((t) => t.id === id);
+    const nextStart = slotToISO(day, slot);
+    // Keep any extra chunks in step with the block being moved.
+    let sessions = task?.sessions;
+    if (task?.scheduledStart && sessions?.length) {
+      const delta = new Date(nextStart).getTime() - new Date(task.scheduledStart).getTime();
+      sessions = sessions.map((b) => ({
+        ...b,
+        start: new Date(new Date(b.start).getTime() + delta).toISOString(),
+      }));
+    }
     onUpdateTask(id, {
-      scheduledStart: slotToISO(day, slot),
-      scheduledDuration: tasks.find((t) => t.id === id)?.scheduledDuration ?? 30,
+      scheduledStart: nextStart,
+      scheduledDuration: task?.scheduledDuration ?? 30,
+      sessions,
       due: dayKey,
       myDay: dayKey,
     });
@@ -431,7 +652,7 @@ function DayView({
     const onUp = () => {
       if (resizing) {
         const minutes = resizing.curSlots * SLOT_MIN;
-        onSetDuration(resizing.id, minutes);
+        onSetDuration(resizing.taskId, minutes);
       }
       setResizing(null);
     };
@@ -522,15 +743,17 @@ function DayView({
             </div>
           )}
 
-          {laidOut.map(({ task, slot, slots, col, cols }) => {
+          {laidOut.map(({ task, slot, slots, col, cols, key: blockKey, partIndex, partTotal }) => {
+            const isLead = partIndex === 0;
+            const chunked = partTotal > 1;
             const effectiveSlots =
-              resizing?.id === task.id ? resizing.curSlots : slots;
+              resizing?.id === blockKey ? resizing.curSlots : slots;
             const left = `calc(3rem + ${(col / cols) * 100}% - ${(col / cols) * 3}rem)`;
             const width = `calc(${(1 / cols) * 100}% - ${(1 / cols) * 3}rem - 4px)`;
             return (
               <div
-                key={task.id}
-                draggable={!resizing}
+                key={blockKey}
+                draggable={isLead && !resizing}
                 onDragStart={(e) => {
                   e.dataTransfer.setData("text/task-id", task.id);
                   e.dataTransfer.effectAllowed = "move";
@@ -553,14 +776,15 @@ function DayView({
                   <div className="min-w-0 flex-1">
                     <div className="truncate font-medium">{task.title}</div>
                     <div className="text-[10px] text-muted-foreground">
-                      {formatTime(task.scheduledStart!)} ·{" "}
+                      {formatTime(taskBlocks(task)[partIndex]?.start ?? task.scheduledStart!)} ·{" "}
                       {effectiveSlots * SLOT_MIN}m
+                      {chunked && ` · part ${partIndex + 1}/${partTotal}`}
                     </div>
                   </div>
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      onUnschedule(task.id);
+                      onRemoveBlock(task, partIndex);
                     }}
                     className="rounded p-0.5 text-muted-foreground opacity-0 hover:bg-background hover:text-foreground group-hover:opacity-100"
                     aria-label="Unschedule"
@@ -568,7 +792,7 @@ function DayView({
                     <X className="h-3 w-3" />
                   </button>
                 </div>
-                {effectiveSlots >= 2 && (
+                {isLead && effectiveSlots >= 2 && (
                   <div
                     className="mt-1 flex flex-wrap items-center gap-1"
                     onClick={(e) => e.stopPropagation()}
@@ -608,12 +832,14 @@ function DayView({
                   </div>
                 )}
                 {/* Resize handle */}
+                {isLead && (
                 <div
                   onMouseDown={(e) => {
                     e.stopPropagation();
                     e.preventDefault();
                     setResizing({
-                      id: task.id,
+                      id: blockKey,
+                      taskId: task.id,
                       startSlot: slot,
                       startY: e.clientY,
                       origSlots: slots,
@@ -623,6 +849,7 @@ function DayView({
                   className="absolute bottom-0 left-0 right-0 h-1.5 cursor-ns-resize opacity-0 hover:bg-primary/30 group-hover:opacity-100"
                   aria-label="Resize"
                 />
+                )}
               </div>
             );
           })}
@@ -720,19 +947,28 @@ function WeekView({
   );
 
   const blocksByDay = useMemo(() => {
-    const map = new Map<string, { task: Task; slot: number; slots: number }[]>();
+    const map = new Map<string, DayBlock[]>();
     for (const t of tasks) {
-      if (!t.scheduledStart || t.status === "done") continue;
-      const dk = dateKey(new Date(t.scheduledStart));
-      const dDate = days.find((d) => dateKey(d) === dk);
-      if (!dDate) continue;
-      const slot = isoToSlot(t.scheduledStart, dDate);
-      if (slot == null) continue;
-      const dur = Math.max(SLOT_MIN, t.scheduledDuration ?? 30);
-      const slots = Math.max(1, Math.round(dur / SLOT_MIN));
-      const list = map.get(dk) ?? [];
-      list.push({ task: t, slot, slots });
-      map.set(dk, list);
+      if (t.status === "done") continue;
+      const blocks = taskBlocks(t);
+      blocks.forEach((b, i) => {
+        const dk = dateKey(new Date(b.start));
+        const dDate = days.find((d) => dateKey(d) === dk);
+        if (!dDate) return;
+        const slot = isoToSlot(b.start, dDate);
+        if (slot == null) return;
+        const dur = Math.max(SLOT_MIN, b.duration);
+        const list = map.get(dk) ?? [];
+        list.push({
+          key: `${t.id}#${i}`,
+          task: t,
+          slot,
+          slots: Math.max(1, Math.round(dur / SLOT_MIN)),
+          partIndex: i,
+          partTotal: blocks.length,
+        });
+        map.set(dk, list);
+      });
     }
     return map;
   }, [tasks, days]);
@@ -798,9 +1034,9 @@ function WeekView({
                 className="relative border-l"
                 onClick={() => onSelectDay(d)}
               >
-                {laid.map(({ task, slot, slots, col, cols }) => (
+                {laid.map(({ task, slot, slots, col, cols, key: bk }) => (
                   <div
-                    key={task.id}
+                    key={bk}
                     onClick={(e) => {
                       e.stopPropagation();
                       taskDialogStore.openEdit(task);
@@ -839,23 +1075,15 @@ function formatHour(h: number): string {
   return d.toLocaleTimeString(undefined, { hour: "numeric" });
 }
 
-interface LaidBlock {
-  task: Task;
-  slot: number;
-  slots: number;
-  col: number;
-  cols: number;
-}
-
-function layoutBlocks(
-  blocks: { task: Task; slot: number; slots: number }[],
-): LaidBlock[] {
+function layoutBlocks<T extends { slot: number; slots: number }>(
+  blocks: T[],
+): (T & { col: number; cols: number })[] {
   const sorted = [...blocks].sort((a, b) => a.slot - b.slot);
-  const result: LaidBlock[] = [];
-  let cluster: (typeof sorted[number] & { end: number })[] = [];
+  const result: (T & { col: number; cols: number })[] = [];
+  let cluster: (T & { end: number })[] = [];
   const flush = () => {
     if (!cluster.length) return;
-    const cols: (typeof cluster[number] | null)[] = [];
+    const cols: ((T & { end: number }) | null)[] = [];
     const assignments: number[] = [];
     for (const b of cluster) {
       let placed = -1;
@@ -874,15 +1102,10 @@ function layoutBlocks(
       assignments.push(placed);
     }
     const totalCols = cols.length;
-    cluster.forEach((b, i) =>
-      result.push({
-        task: b.task,
-        slot: b.slot,
-        slots: b.slots,
-        col: assignments[i],
-        cols: totalCols,
-      }),
-    );
+    cluster.forEach((b, i) => {
+      const { end: _end, ...rest } = b;
+      result.push({ ...(rest as unknown as T), col: assignments[i], cols: totalCols });
+    });
     cluster = [];
   };
   let clusterEnd = -1;
