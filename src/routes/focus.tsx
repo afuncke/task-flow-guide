@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTasks } from "@/hooks/use-tasks";
 import { useContextState } from "@/hooks/use-context-state";
@@ -17,7 +17,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronRight, Check, Play, Pause, Clock, SkipForward, Plus } from "lucide-react";
+import { CalendarClock, ChevronRight, Check, Play, Pause, Clock, SkipForward, Plus } from "lucide-react";
 
 export const Route = createFileRoute("/focus")({
   head: () => ({
