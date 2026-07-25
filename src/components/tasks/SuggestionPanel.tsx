@@ -171,7 +171,9 @@ export function SuggestionPanel({
         <div className="min-w-0">
           <div className="text-sm font-medium">{draft.headline}</div>
           <div className="text-xs text-muted-foreground">
-            Suggested setup — {confidenceLabel(draft.confidence)}. Everything below is editable.
+            {assisted ? "Assistant's setup" : "Suggested setup"} — {confidenceLabel(draft.confidence)}.
+            Everything below is editable.
+
           </div>
         </div>
       </div>
