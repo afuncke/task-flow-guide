@@ -913,6 +913,8 @@ function DayView({
             return (
               <div
                 key={i}
+                onDoubleClick={() => onNewEventAt(HOUR_START * 60 + i * SLOT_MIN)}
+                title="Double-click to add a commitment"
                 className={cn(
                   "absolute left-0 right-0 border-t",
                   isHour ? "border-border" : "border-border/40",
@@ -928,6 +930,38 @@ function DayView({
               </div>
             );
           })}
+
+          {/* Commitments: time already spoken for. Tasks pack around them. */}
+          {events.map((ev) => {
+            const top = ((ev.startMin - HOUR_START * 60) / SLOT_MIN) * SLOT_PX;
+            const height = Math.max(SLOT_PX, (ev.duration / SLOT_MIN) * SLOT_PX);
+            if (top + height < 0 || top > TOTAL_SLOTS * SLOT_PX) return null;
+            return (
+              <button
+                key={ev.id}
+                onClick={() => onEditEvent(ev)}
+                className={cn(
+                  "absolute left-12 right-1 overflow-hidden rounded-md border px-2 py-1 text-left text-xs",
+                  ev.soft
+                    ? "border-dashed border-muted-foreground/40 bg-muted/40 text-muted-foreground"
+                    : "border-muted-foreground/30 bg-muted text-foreground/80",
+                )}
+                style={{
+                  top: Math.max(0, top) + 1,
+                  height: height - 2,
+                  backgroundImage: ev.soft
+                    ? undefined
+                    : "repeating-linear-gradient(135deg, hsl(var(--muted-foreground)/0.07) 0 6px, transparent 6px 12px)",
+                }}
+              >
+                <span className="block truncate font-medium">{ev.title}</span>
+                <span className="block text-[10px] opacity-70">
+                  {formatMin2(ev.startMin)} · {ev.duration}m{ev.soft ? " · flexible" : ""}
+                </span>
+              </button>
+            );
+          })}
+
 
           {nowLineTop != null && (
             <div
