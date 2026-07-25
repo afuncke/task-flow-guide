@@ -135,6 +135,11 @@ export function useKeybindings(onShowHelp: () => void) {
           e.preventDefault();
           dispatch("soft-landing");
           return;
+        case "E":
+          e.preventDefault();
+          dispatch("shutdown");
+          return;
+
         case "p": {
           e.preventDefault();
           const on = playfulStore.toggle();

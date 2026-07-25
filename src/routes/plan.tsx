@@ -1,15 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, Sparkles, X, RotateCcw, Heart, Repeat } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, X, RotateCcw, Heart, Repeat, Sunset } from "lucide-react";
 import { useTasks } from "@/hooks/use-tasks";
 import { AreaRadar } from "@/components/tasks/AreaRadar";
 import { useContextState } from "@/hooks/use-context-state";
+import { useAreas } from "@/hooks/use-areas";
 import { usePlanState } from "@/lib/tasks/plan-store";
 import { autoSchedule, minutesToISO, type BusyRange } from "@/lib/tasks/auto-schedule";
 import { estimateInsight, estimateNote } from "@/lib/tasks/estimates";
+import { dayBudget, areaSplit, untouchedAreas } from "@/lib/tasks/day-budget";
+import { CapacityMeter } from "@/components/tasks/CapacityMeter";
+import { AreaBalance } from "@/components/tasks/AreaBalance";
+import { ShutdownRitual } from "@/components/tasks/ShutdownRitual";
+import { phaseAt } from "@/lib/time-of-day";
 import { forecastDeadlines } from "@/lib/tasks/forecast";
 import { DeadlineForecast } from "@/components/tasks/DeadlineForecast";
 import { toast } from "@/lib/playful/celebrate";
+
 import type { Task } from "@/lib/tasks/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -107,10 +114,13 @@ export function taskBlocks(t: Task): { start: string; duration: number }[] {
 function PlanPage() {
   const { tasks, allTasks, hydrated, updateTask, setStatus, bulkUpdate } = useTasks();
   const { stored } = useContextState();
+  const { areas } = useAreas();
   const {
     hydrated: planHydrated,
     isPlanned,
     markPlanned,
+    isShutdown,
+    markShutdown,
     autoReplan,
     setAutoReplan,
   } = usePlanState();
@@ -123,6 +133,8 @@ function PlanPage() {
   const [ritualOpen, setRitualOpen] = useState(false);
   const [ritualDismissedThisSession, setRitualDismissedThisSession] = useState(false);
   const [softLandingOpen, setSoftLandingOpen] = useState(false);
+  const [shutdownOpen, setShutdownOpen] = useState(false);
+
 
   const todayKey = dateKey(new Date());
   const dayIsToday = dateKey(day) === todayKey;
@@ -151,6 +163,8 @@ function PlanPage() {
         setDay(d);
       } else if (detail === "replan") setRitualOpen(true);
       else if (detail === "soft-landing") setSoftLandingOpen(true);
+      else if (detail === "shutdown") setShutdownOpen(true);
+
     };
     window.addEventListener("shenas:key", on);
     return () => window.removeEventListener("shenas:key", on);
@@ -203,6 +217,37 @@ function PlanPage() {
   const scheduledMin = scheduled.reduce((n, s) => n + s.slots * SLOT_MIN, 0);
   const workWindowMin = (stored.schedule.end - stored.schedule.start) * 60;
   const overCapacity = scheduledMin > workWindowMin;
+
+  /* --- Live capacity budget + area balance for what's committed today --- */
+  const committedTasks = useMemo(() => {
+    const seen = new Map<string, Task>();
+    for (const s of scheduled) if (!seen.has(s.task.id)) seen.set(s.task.id, s.task);
+    for (const t of needsSlot) if (!seen.has(t.id)) seen.set(t.id, t);
+    return [...seen.values()].filter((t) => t.status !== "done");
+  }, [scheduled, needsSlot]);
+
+  const budget = useMemo(
+    () =>
+      dayBudget(committedTasks, stored.schedule, {
+        factor: insight.factor,
+        isToday: dayIsToday,
+      }),
+    [committedTasks, stored.schedule, insight.factor, dayIsToday],
+  );
+
+  const split = useMemo(
+    () => areaSplit(committedTasks, allTasks, areas, insight.factor),
+    [committedTasks, allTasks, areas, insight.factor],
+  );
+
+  const untouched = useMemo(
+    () => untouchedAreas(split, areas, allTasks),
+    [split, areas, allTasks],
+  );
+
+  const isEvening = dayIsToday && ["evening", "night"].includes(phaseAt());
+  const dayClosed = dayIsToday && isShutdown(todayKey);
+
 
   const overdue = useMemo(
     () =>
@@ -404,6 +449,11 @@ function PlanPage() {
                 Planned
               </span>
             )}
+            {dayClosed && (
+              <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                Closed
+              </span>
+            )}
           </div>
           <p className="text-xs text-muted-foreground">
             {scheduled.length} block{scheduled.length === 1 ? "" : "s"} ·{" "}
@@ -419,7 +469,14 @@ function PlanPage() {
               {estimateNote(insight)}
             </p>
           )}
+          {committedTasks.length > 0 && (
+            <div className="mt-2 max-w-md space-y-2">
+              <CapacityMeter budget={budget} />
+              <AreaBalance split={split} untouched={untouched} />
+            </div>
+          )}
         </div>
+
         <div className="flex flex-wrap items-center gap-2">
           <div className="flex rounded-md border p-0.5 text-xs">
             <button
@@ -462,6 +519,19 @@ function PlanPage() {
           >
             <RotateCcw className="mr-1 h-3.5 w-3.5" /> Re-plan
           </Button>
+          {dayIsToday && (
+            <Button
+              variant={isEvening && !dayClosed ? "default" : "outline"}
+              size="sm"
+              onClick={() => setShutdownOpen(true)}
+              title="Close the day (E)"
+              className={cn(!isEvening && !dayClosed && "opacity-70")}
+            >
+              <Sunset className="mr-1 h-3.5 w-3.5" />
+              {dayClosed ? "Day closed" : "Close the day"}
+            </Button>
+          )}
+
           {overdue.length > 0 && (
             <Button
               variant="outline"
@@ -562,6 +632,19 @@ function PlanPage() {
           updateTask(id, { archived: true, archivedAt: new Date().toISOString() })
         }
       />
+
+      <ShutdownRitual
+        open={shutdownOpen}
+        onOpenChange={setShutdownOpen}
+        tasks={allTasks}
+        todayKey={todayKey}
+        onBulkUpdate={bulkUpdate}
+        onArchive={(id) =>
+          updateTask(id, { archived: true, archivedAt: new Date().toISOString() })
+        }
+        onComplete={() => markShutdown(todayKey, true)}
+      />
+
     </div>
   );
 }

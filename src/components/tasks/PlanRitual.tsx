@@ -7,6 +7,11 @@ import { rankTasks } from "@/lib/tasks/urgency";
 import { useContextState } from "@/hooks/use-context-state";
 import { autoSchedule, minutesToISO } from "@/lib/tasks/auto-schedule";
 import { estimateInsight } from "@/lib/tasks/estimates";
+import { dayBudget, areaSplit, untouchedAreas } from "@/lib/tasks/day-budget";
+import { CapacityMeter } from "./CapacityMeter";
+import { AreaBalance } from "./AreaBalance";
+import { useAreas } from "@/hooks/use-areas";
+
 import { DueBadge } from "./DueBadge";
 import { TagChip } from "./TagChip";
 import { cn } from "@/lib/utils";
@@ -34,6 +39,8 @@ export function PlanRitual({
   onComplete: () => void;
 }) {
   const { stored, currentState } = useContextState();
+  const { areas } = useAreas();
+
   const [step, setStep] = useState<Step>("rollover");
   // Picks made this session (task IDs to work on today)
   const [picks, setPicks] = useState<Set<string>>(() => new Set());
@@ -66,6 +73,8 @@ export function PlanRitual({
     const ranked = rankTasks(rest, currentState).slice(0, 15);
     return { alreadyPinned: already, suggested: ranked };
   }, [tasks, todayKey, currentState]);
+
+
 
   // Seed picks with anything already pinned to today
   useMemo(() => {
@@ -102,6 +111,24 @@ export function PlanRitual({
     (stored.schedule.end - stored.schedule.start) * 60;
 
   const overflow = totalPickedMin > workWindowMin;
+
+  /* Live budget + area balance: feel the commitment while you're making it. */
+  const factor = useMemo(() => estimateInsight(tasks).factor, [tasks]);
+  const openPicks = useMemo(
+    () => pickedTasks.filter((t) => t.status !== "done"),
+    [pickedTasks],
+  );
+  const budget = useMemo(
+    () => dayBudget(openPicks, stored.schedule, { factor, isToday: true }),
+    [openPicks, stored.schedule, factor],
+  );
+  const split = useMemo(
+    () => areaSplit(openPicks, tasks, areas, factor),
+    [openPicks, tasks, areas, factor],
+  );
+  const untouched = useMemo(() => untouchedAreas(split, areas, tasks), [split, areas, tasks]);
+
+
 
   const commitRollover = (
     action: "keep" | "push-today" | "unschedule" | "done",
@@ -304,9 +331,14 @@ export function PlanRitual({
                 </div>
               )}
             </Section>
-            <div className="text-xs text-muted-foreground">
-              {picks.size} picked · {formatMin(totalPickedMin)} estimated
+            <div className="sticky bottom-0 space-y-2 border-t bg-background pt-3">
+              <div className="text-xs text-muted-foreground">
+                {picks.size} picked · {formatMin(totalPickedMin)} estimated
+              </div>
+              <CapacityMeter budget={budget} label="Picked" />
+              <AreaBalance split={split} untouched={untouched} />
             </div>
+
           </div>
         )}
 
