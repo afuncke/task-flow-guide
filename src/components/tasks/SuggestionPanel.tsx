@@ -54,6 +54,7 @@ export function SuggestionPanel({
   const { currentState } = useContextState();
   const [thinking, setThinking] = useState(true);
   const [draft, setDraft] = useState<Suggestion | null>(null);
+  const [assisted, setAssisted] = useState(false);
 
   // Deliberately keyed on stable primitives: the surrounding hooks hand back
   // fresh object identities every render, which would otherwise restart the
@@ -66,13 +67,42 @@ export function SuggestionPanel({
   );
 
   useEffect(() => {
+    let cancelled = false;
     setThinking(true);
     setDraft(null);
-    const id = window.setTimeout(() => {
-      setDraft(base);
-      setThinking(false);
-    }, 550);
-    return () => window.clearTimeout(id);
+    setAssisted(false);
+
+    void (async () => {
+      try {
+        const ai = await suggestWithAssistant({
+          data: {
+            title: task.title,
+            notes: task.notes,
+            today: new Date().toISOString().slice(0, 10),
+            state: JSON.parse(stateKey),
+            areas: areas.map((a) => ({ id: a.id, name: a.name })),
+            knownTags: Array.from(new Set(allTasks.flatMap((t) => t.tags))).slice(0, 40),
+            projects: projects.map((p) => ({ id: p.id, title: p.title })),
+          },
+        });
+        if (cancelled) return;
+        if (ai) {
+          setDraft(mergeAiSuggestion(base, ai, areas.map((a) => a.id), projects.map((p) => p.id)));
+          setAssisted(true);
+        } else {
+          setDraft(base);
+        }
+      } catch {
+        if (!cancelled) setDraft(base);
+      } finally {
+        if (!cancelled) setThinking(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [base]);
 
   if (thinking || !draft) {
@@ -83,6 +113,7 @@ export function SuggestionPanel({
       </div>
     );
   }
+
 
   const set = (patch: Partial<Suggestion>) => setDraft({ ...draft, ...patch });
 
