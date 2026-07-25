@@ -55,9 +55,14 @@ export function SuggestionPanel({
   const [thinking, setThinking] = useState(true);
   const [draft, setDraft] = useState<Suggestion | null>(null);
 
+  // Deliberately keyed on stable primitives: the surrounding hooks hand back
+  // fresh object identities every render, which would otherwise restart the
+  // "thinking" delay forever.
+  const stateKey = JSON.stringify(currentState);
   const base = useMemo(
-    () => suggestTaskSettings({ task, areas, allTasks, state: currentState }),
-    [task, areas, allTasks, currentState],
+    () => suggestTaskSettings({ task, areas, allTasks, state: JSON.parse(stateKey) }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [task.id, task.title, task.notes, stateKey, areas.length, allTasks.length],
   );
 
   useEffect(() => {
