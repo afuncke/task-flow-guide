@@ -48,9 +48,12 @@ export interface TaskDialogProps {
     priority: TaskPriority;
     due?: string;
     context?: TaskContext;
+    scheduledDuration?: number;
   }) => void;
   onDelete?: () => void;
 }
+
+const DURATION_PRESETS = [15, 30, 45, 60, 90];
 
 export function TaskDialog({
   open,
@@ -67,6 +70,7 @@ export function TaskDialog({
   const [tagInput, setTagInput] = useState("");
   const [priority, setPriority] = useState<TaskPriority>(null);
   const [due, setDue] = useState<string>("");
+  const [duration, setDuration] = useState<number | "">("");
   const [ctxLocation, setCtxLocation] = useState<Location>("anywhere");
   const [ctxEnergy, setCtxEnergy] = useState<Energy>("any");
   const [ctxDuration, setCtxDuration] = useState<Duration>("any");
@@ -80,6 +84,7 @@ export function TaskDialog({
       setTagInput("");
       setPriority(task?.priority ?? null);
       setDue(task?.due ?? defaultDue ?? "");
+      setDuration(task?.scheduledDuration ?? "");
       setCtxLocation(task?.context?.location ?? "anywhere");
       setCtxEnergy(task?.context?.energy ?? "any");
       setCtxDuration(task?.context?.duration ?? "any");
