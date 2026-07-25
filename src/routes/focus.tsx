@@ -104,6 +104,7 @@ function FocusPage() {
               <TagChip key={t} tag={t} />
             ))}
             <DueBadge due={current.due} />
+            <ContextChips context={current.context} muted={!contextFit(current, currentState)} />
             {current.priority && (
               <span className="rounded border px-1.5 text-[10px] font-semibold text-muted-foreground">
                 {current.priority}
