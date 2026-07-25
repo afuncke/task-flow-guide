@@ -51,24 +51,32 @@ const COLUMNS: { id: BoardColumn; label: string; hint?: string }[] = [
 
 type ColumnMap = Record<BoardColumn, Task[]>;
 
-function columnOf(t: Task): BoardColumn {
+function todayKey(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function columnOf(t: Task, today: string): BoardColumn {
   if (t.status === "doing") return "focused";
   if (t.status === "done") return "done";
-  if (t.myDay) return "myday";
+  if (t.myDay === today) return "myday";
   return "backlog";
 }
 
-function patchForColumn(col: BoardColumn, orig: Task): Partial<Task> {
+function patchForColumn(col: BoardColumn, orig: Task, today: string): Partial<Task> {
   const patch: Partial<Task> = {};
   switch (col) {
     case "backlog":
       if (orig.status !== "todo") patch.status = "todo";
-      if (orig.myDay) patch.myDay = false;
+      if (orig.myDay === today) patch.myDay = undefined;
       if (orig.status === "done") patch.completedAt = undefined;
       break;
     case "myday":
       if (orig.status !== "todo") patch.status = "todo";
-      if (!orig.myDay) patch.myDay = true;
+      if (orig.myDay !== today) patch.myDay = today;
       if (orig.status === "done") patch.completedAt = undefined;
       break;
     case "focused":
