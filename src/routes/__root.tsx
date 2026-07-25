@@ -25,6 +25,9 @@ import { usePlayfulCopy } from "@/lib/playful/copy";
 import { captureStore } from "@/lib/tasks/capture-store";
 import { CaptureBar } from "@/components/tasks/CaptureBar";
 import { useTasks } from "@/hooks/use-tasks";
+import { DayStrip } from "@/components/tasks/DayStrip";
+import { UndoBar } from "@/components/tasks/UndoBar";
+import { useTimeOfDay } from "@/lib/time-of-day";
 
 
 function NotFoundComponent() {
@@ -134,6 +137,10 @@ function RootComponent() {
   useKeybindings(() => setHelpOpen(true));
   const playful = usePlayful();
   const c = usePlayfulCopy();
+  const { meta } = useTimeOfDay();
+  // Progressive disclosure: everything stays reachable, but what doesn't
+  // belong to this part of the day steps back visually.
+  const lit = (to: string) => meta.surfaces.includes(to);
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -144,12 +151,12 @@ function RootComponent() {
               {c("brand")}
             </Link>
             <InboxNavLink />
-            <NavLink to="/plan">{c("plan")}</NavLink>
-            <NavLink to="/focus">{c("focus")}</NavLink>
-            <NavLink to="/projects">Projects</NavLink>
-            <NavLink to="/board">{c("board")}</NavLink>
-            <NavLink to="/calendar">{c("calendar")}</NavLink>
-            <NavLink to="/tasks">{c("all")}</NavLink>
+            <NavLink to="/plan" dimmed={!lit("/plan")}>{c("plan")}</NavLink>
+            <NavLink to="/focus" dimmed={!lit("/focus")}>{c("focus")}</NavLink>
+            <NavLink to="/projects" dimmed={!lit("/projects")}>Projects</NavLink>
+            <NavLink to="/board" dimmed={!lit("/board")}>{c("board")}</NavLink>
+            <NavLink to="/calendar" dimmed={!lit("/calendar")}>{c("calendar")}</NavLink>
+            <NavLink to="/tasks" dimmed={!lit("/tasks")}>{c("all")}</NavLink>
             <div className="ml-auto flex items-center gap-1">
               <button
                 onClick={() => captureStore.open()}
@@ -184,10 +191,12 @@ function RootComponent() {
           </div>
         </header>
 
+        <DayStrip />
         <AreaBar />
         <ContextBar />
         <Outlet />
 
+        <UndoBar />
         <GlobalTaskDialog />
         <CaptureBar />
         <KeyboardHelp open={helpOpen} onOpenChange={setHelpOpen} />
@@ -219,11 +228,21 @@ function InboxNavLink() {
 
 
 
-function NavLink({ to, children }: { to: string; children: ReactNode }) {
+function NavLink({
+  to,
+  children,
+  dimmed = false,
+}: {
+  to: string;
+  children: ReactNode;
+  dimmed?: boolean;
+}) {
   return (
     <Link
       to={to}
-      className="rounded-md px-2.5 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      className={`rounded-md px-2.5 py-1 text-sm transition-colors hover:text-foreground ${
+        dimmed ? "text-muted-foreground/50" : "text-muted-foreground"
+      }`}
       activeProps={{ className: "rounded-md px-2.5 py-1 text-sm text-foreground font-medium" }}
     >
       {children}
