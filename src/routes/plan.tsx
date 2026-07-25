@@ -17,6 +17,7 @@ import {
 import { TagChip } from "@/components/tasks/TagChip";
 import { DueBadge } from "@/components/tasks/DueBadge";
 import { PlanRitual } from "@/components/tasks/PlanRitual";
+import { SoftLandingWizard } from "@/components/tasks/SoftLandingWizard";
 import { taskDialogStore } from "@/lib/tasks/dialog-store";
 import { cn } from "@/lib/utils";
 
@@ -91,6 +92,7 @@ function PlanPage() {
   const [view, setView] = useState<ViewMode>("day");
   const [ritualOpen, setRitualOpen] = useState(false);
   const [ritualDismissedThisSession, setRitualDismissedThisSession] = useState(false);
+  const [softLandingOpen, setSoftLandingOpen] = useState(false);
 
   const todayKey = dateKey(new Date());
   const dayIsToday = dateKey(day) === todayKey;
@@ -115,6 +117,7 @@ function PlanPage() {
         d.setHours(0, 0, 0, 0);
         setDay(d);
       } else if (detail === "replan") setRitualOpen(true);
+      else if (detail === "soft-landing") setSoftLandingOpen(true);
     };
     window.addEventListener("shenas:key", on);
     return () => window.removeEventListener("shenas:key", on);

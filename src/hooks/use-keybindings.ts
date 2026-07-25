@@ -101,6 +101,10 @@ export function useKeybindings(onShowHelp: () => void) {
           e.preventDefault();
           dispatch("jump-scheduled");
           return;
+        case "L":
+          e.preventDefault();
+          dispatch("soft-landing");
+          return;
       }
     };
 
