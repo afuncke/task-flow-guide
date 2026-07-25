@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import type { Task, TaskStatus } from "@/lib/tasks/types";
 import { STORAGE_KEY, loadTasks, newId, saveTasks } from "@/lib/tasks/storage";
+import { celebrate } from "@/lib/playful/celebrate";
+import { soundComplete } from "@/lib/playful/sound";
 
 const listeners = new Set<() => void>();
 function notify() {
