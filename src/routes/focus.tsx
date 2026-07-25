@@ -32,13 +32,18 @@ export const Route = createFileRoute("/focus")({
 
 function FocusPage() {
   const { tasks, hydrated, addTask, updateTask, setStatus, deleteTask } = useTasks();
+  const { currentState, stored } = useContextState();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const [skipped, setSkipped] = useState<string[]>([]);
   const [upNextOpen, setUpNextOpen] = useState(false);
 
   const active = useMemo(() => tasks.filter((t) => t.status !== "done"), [tasks]);
-  const ranked = useMemo(() => rankTasks(active), [active]);
+  const scoped = useMemo(
+    () => (stored.hideMismatches ? active.filter((t) => contextFit(t, currentState)) : active),
+    [active, currentState, stored.hideMismatches],
+  );
+  const ranked = useMemo(() => rankTasks(scoped, currentState), [scoped, currentState]);
   const visible = useMemo(() => ranked.filter((t) => !skipped.includes(t.id)), [ranked, skipped]);
   const current = visible[0];
   const upNext = visible.slice(1, 4);
