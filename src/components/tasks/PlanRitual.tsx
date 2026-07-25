@@ -11,6 +11,8 @@ import { dayBudget, areaSplit, untouchedAreas } from "@/lib/tasks/day-budget";
 import { CapacityMeter } from "./CapacityMeter";
 import { AreaBalance } from "./AreaBalance";
 import { useAreas } from "@/hooks/use-areas";
+import { useEvents, eventBusyRanges, eventMinutesInWindow } from "@/lib/tasks/events";
+
 
 import { DueBadge } from "./DueBadge";
 import { TagChip } from "./TagChip";
@@ -107,8 +109,14 @@ export function PlanRitual({
     (n, t) => n + (t.scheduledDuration ?? 30),
     0,
   );
+  // Meetings and appointments already own part of the day.
+  const { events } = useEvents();
+  const eventMinutes = useMemo(
+    () => eventMinutesInWindow(events, todayKey, stored.schedule),
+    [events, todayKey, stored.schedule],
+  );
   const workWindowMin =
-    (stored.schedule.end - stored.schedule.start) * 60;
+    (stored.schedule.end - stored.schedule.start) * 60 - eventMinutes;
 
   const overflow = totalPickedMin > workWindowMin;
 
@@ -119,9 +127,15 @@ export function PlanRitual({
     [pickedTasks],
   );
   const budget = useMemo(
-    () => dayBudget(openPicks, stored.schedule, { factor, isToday: true }),
-    [openPicks, stored.schedule, factor],
+    () =>
+      dayBudget(openPicks, stored.schedule, {
+        factor,
+        isToday: true,
+        busyMinutes: eventMinutes,
+      }),
+    [openPicks, stored.schedule, factor, eventMinutes],
   );
+
   const split = useMemo(
     () => areaSplit(openPicks, tasks, areas, factor),
     [openPicks, tasks, areas, factor],
@@ -153,18 +167,22 @@ export function PlanRitual({
       if (!t.scheduledStart) return true;
       return isoDate(new Date(t.scheduledStart)) !== todayKey;
     });
-    // Existing busy = picked tasks already scheduled today
-    const busy = pickedTasks
-      .filter((t) => t.scheduledStart && isoDate(new Date(t.scheduledStart)) === todayKey)
-      .map((t) => {
-        const d = new Date(t.scheduledStart!);
-        const startMin = d.getHours() * 60 + d.getMinutes();
-        return { startMin, endMin: startMin + (t.scheduledDuration ?? 30) };
-      });
+    // Existing busy = today's meetings plus picks already scheduled today
+    const busy = [
+      ...eventBusyRanges(events, todayKey),
+      ...pickedTasks
+        .filter((t) => t.scheduledStart && isoDate(new Date(t.scheduledStart)) === todayKey)
+        .map((t) => {
+          const d = new Date(t.scheduledStart!);
+          const startMin = d.getHours() * 60 + d.getMinutes();
+          return { startMin, endMin: startMin + (t.scheduledDuration ?? 30) };
+        }),
+    ];
 
     const { blocks, unplaced } = autoSchedule(candidates, stored.schedule, busy, {
       factor: estimateInsight(tasks).factor,
     });
+
     const patches: Record<string, Partial<Task>> = {};
     for (const [id, list] of Object.entries(blocks)) {
       if (!list.length) continue;

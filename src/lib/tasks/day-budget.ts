@@ -42,13 +42,18 @@ export function remainingWindowMinutes(schedule: WorkSchedule, now = new Date())
 export function dayBudget(
   committedTasks: Task[],
   schedule: WorkSchedule,
-  opts: { factor?: number; isToday?: boolean; now?: Date } = {},
+  opts: { factor?: number; isToday?: boolean; now?: Date; busyMinutes?: number } = {},
 ): DayBudget {
   const factor = opts.factor ?? 1;
-  const capacity = workWindowMinutes(schedule);
-  const remaining = opts.isToday
-    ? remainingWindowMinutes(schedule, opts.now ?? new Date())
-    : capacity;
+  // Meetings and appointments are time the day no longer holds for tasks.
+  const busy = Math.max(0, opts.busyMinutes ?? 0);
+  const capacity = Math.max(0, workWindowMinutes(schedule) - busy);
+  const remaining = Math.max(
+    0,
+    (opts.isToday
+      ? remainingWindowMinutes(schedule, opts.now ?? new Date())
+      : workWindowMinutes(schedule)) - busy,
+  );
   const committed = committedTasks.reduce((n, t) => n + taskMinutes(t, factor), 0);
   const reference = Math.max(1, remaining);
   return {
@@ -61,6 +66,7 @@ export function dayBudget(
     free: Math.max(0, remaining - committed),
   };
 }
+
 
 /* ------------------------------------------------------------------ */
 /* Area balance                                                        */

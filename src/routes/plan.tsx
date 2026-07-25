@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, Sparkles, X, RotateCcw, Heart, Repeat, Sunset } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, X, RotateCcw, Heart, Repeat, Sunset, CalendarClock } from "lucide-react";
 import { useTasks } from "@/hooks/use-tasks";
 import { AreaRadar } from "@/components/tasks/AreaRadar";
 import { useContextState } from "@/hooks/use-context-state";
@@ -8,14 +8,23 @@ import { useAreas } from "@/hooks/use-areas";
 import { usePlanState } from "@/lib/tasks/plan-store";
 import { autoSchedule, minutesToISO, type BusyRange } from "@/lib/tasks/auto-schedule";
 import { estimateInsight, estimateNote } from "@/lib/tasks/estimates";
-import { dayBudget, areaSplit, untouchedAreas } from "@/lib/tasks/day-budget";
+import { dayBudget, areaSplit, untouchedAreas, formatMinutes } from "@/lib/tasks/day-budget";
 import { CapacityMeter } from "@/components/tasks/CapacityMeter";
 import { AreaBalance } from "@/components/tasks/AreaBalance";
 import { ShutdownRitual } from "@/components/tasks/ShutdownRitual";
+import { EventDialog } from "@/components/tasks/EventDialog";
+import {
+  useEvents,
+  eventsOn,
+  eventBusyRanges,
+  eventMinutesInWindow,
+  type CalEvent,
+} from "@/lib/tasks/events";
 import { phaseAt } from "@/lib/time-of-day";
 import { forecastDeadlines } from "@/lib/tasks/forecast";
 import { DeadlineForecast } from "@/components/tasks/DeadlineForecast";
 import { toast } from "@/lib/playful/celebrate";
+
 
 import type { Task } from "@/lib/tasks/types";
 import { Button } from "@/components/ui/button";
@@ -90,6 +99,14 @@ function formatMin(min: number): string {
   return `${h}h ${m}m`;
 }
 
+/** "9:30 AM" from minutes since midnight. */
+function clockLabel(min: number): string {
+  const d = new Date();
+  d.setHours(Math.floor(min / 60), min % 60, 0, 0);
+  return d.toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+}
+
+
 type ViewMode = "day" | "week";
 
 export interface DayBlock {
@@ -134,11 +151,39 @@ function PlanPage() {
   const [ritualDismissedThisSession, setRitualDismissedThisSession] = useState(false);
   const [softLandingOpen, setSoftLandingOpen] = useState(false);
   const [shutdownOpen, setShutdownOpen] = useState(false);
+  const [eventOpen, setEventOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CalEvent | null>(null);
+  const [eventStartMin, setEventStartMin] = useState(9 * 60);
 
+  const { events, addEvent, updateEvent, removeEvent } = useEvents();
 
   const todayKey = dateKey(new Date());
   const dayIsToday = dateKey(day) === todayKey;
   const key = dateKey(day);
+
+  const dayEvents = useMemo(() => eventsOn(events, key), [events, key]);
+  const eventBusy = useMemo(() => eventBusyRanges(events, key), [events, key]);
+  const eventMinutes = useMemo(
+    () =>
+      eventMinutesInWindow(
+        events,
+        key,
+        stored.schedule,
+        dayIsToday ? new Date().getHours() * 60 + new Date().getMinutes() : undefined,
+      ),
+    [events, key, stored.schedule, dayIsToday],
+  );
+
+  const openNewEvent = (startMin = 9 * 60) => {
+    setEditingEvent(null);
+    setEventStartMin(startMin);
+    setEventOpen(true);
+  };
+  const openEditEvent = (ev: CalEvent) => {
+    setEditingEvent(ev);
+    setEventOpen(true);
+  };
+
 
   // How long things really take, learned from finished work.
   const insight = useMemo(() => estimateInsight(allTasks), [allTasks]);
@@ -164,6 +209,15 @@ function PlanPage() {
       } else if (detail === "replan") setRitualOpen(true);
       else if (detail === "soft-landing") setSoftLandingOpen(true);
       else if (detail === "shutdown") setShutdownOpen(true);
+      else if (detail === "new-event") {
+        const now = new Date();
+        openNewEvent(
+          dateKey(now) === dateKey(day)
+            ? Math.round((now.getHours() * 60 + now.getMinutes()) / 15) * 15
+            : 9 * 60,
+        );
+      }
+
 
     };
     window.addEventListener("shenas:key", on);
@@ -215,7 +269,9 @@ function PlanPage() {
   }, [tasks, day, key]);
 
   const scheduledMin = scheduled.reduce((n, s) => n + s.slots * SLOT_MIN, 0);
-  const workWindowMin = (stored.schedule.end - stored.schedule.start) * 60;
+  const workWindowMin =
+    (stored.schedule.end - stored.schedule.start) * 60 -
+    eventMinutesInWindow(events, key, stored.schedule);
   const overCapacity = scheduledMin > workWindowMin;
 
   /* --- Live capacity budget + area balance for what's committed today --- */
@@ -231,9 +287,11 @@ function PlanPage() {
       dayBudget(committedTasks, stored.schedule, {
         factor: insight.factor,
         isToday: dayIsToday,
+        busyMinutes: eventMinutes,
       }),
-    [committedTasks, stored.schedule, insight.factor, dayIsToday],
+    [committedTasks, stored.schedule, insight.factor, dayIsToday, eventMinutes],
   );
+
 
   const split = useMemo(
     () => areaSplit(committedTasks, allTasks, areas, insight.factor),
@@ -306,8 +364,10 @@ function PlanPage() {
       const start = s.slot * SLOT_MIN + HOUR_START * 60;
       return { startMin: start, endMin: start + s.slots * SLOT_MIN };
     });
-    packDay([...needsSlot], busy, day, key, "Auto-scheduled the day");
+    // Meetings hold their ground — tasks pack around them.
+    packDay([...needsSlot], [...busy, ...eventBusy], day, key, "Auto-scheduled the day");
   };
+
 
   /**
    * Continuous reschedule — the plan keeps itself true.
@@ -327,8 +387,11 @@ function PlanPage() {
       if (nowMin >= stored.schedule.end * 60) return;
 
       const stale: Task[] = [];
-      const busy: BusyRange[] = [];
+      const busyEvents = eventBusyRanges(events, todayKey);
+      const busy: BusyRange[] = [...busyEvents];
       const fresh: Task[] = [];
+
+
 
       for (const t of tasks) {
         if (t.status === "done") continue;
@@ -345,7 +408,17 @@ function PlanPage() {
           (b) => new Date(b.start).getTime() + b.duration * 60_000,
         );
         const allPast = ends.every((e) => e <= now.getTime());
-        if (allPast && t.status !== "doing") {
+        // A block that a meeting now sits on top of has to move.
+        const clashes = blocks.some((b) => {
+          const s = new Date(b.start);
+          const startMin = s.getHours() * 60 + s.getMinutes();
+          const endMin = startMin + b.duration;
+          return (
+            endMin > nowMin &&
+            busyEvents.some((ev) => startMin < ev.endMin && endMin > ev.startMin)
+          );
+        });
+        if ((allPast && t.status !== "doing") || (clashes && t.status !== "doing")) {
           stale.push(t);
         } else {
           for (const b of blocks) {
@@ -359,8 +432,12 @@ function PlanPage() {
       const candidates = [...fresh, ...stale];
       if (candidates.length === 0) return;
 
-      const signature = candidates
-        .map((t) => `${t.id}:${t.scheduledStart ?? "-"}:${t.scheduledDuration ?? 0}`)
+      const signature = [
+        ...candidates.map(
+          (t) => `${t.id}:${t.scheduledStart ?? "-"}:${t.scheduledDuration ?? 0}`,
+        ),
+        ...busyEvents.map((b) => `e:${b.startMin}-${b.endMin}`),
+      ]
         .sort()
         .join("|");
       if (signature === lastReplan.current) return;
@@ -377,7 +454,7 @@ function PlanPage() {
       if (moved > 0) {
         toast(
           stale.length > 0
-            ? "Plan updated — unfinished blocks moved ahead · u to undo"
+            ? "Plan updated — blocks moved around what's fixed · u to undo"
             : "Plan updated · u to undo",
         );
       }
@@ -385,7 +462,8 @@ function PlanPage() {
 
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, autoReplan, dayIsToday, hydrated, planHydrated, todayKey, insight.factor]);
+  }, [tasks, events, autoReplan, dayIsToday, hydrated, planHydrated, todayKey, insight.factor]);
+
 
   if (!hydrated || !planHydrated) return null;
 
@@ -463,7 +541,17 @@ function PlanPage() {
             {needsSlot.length > 0 && (
               <> · {needsSlot.length} needs a slot</>
             )}
+            {dayEvents.length > 0 && (
+              <>
+                {" "}
+                · {dayEvents.length} commitment{dayEvents.length === 1 ? "" : "s"} taking{" "}
+                {formatMinutes(
+                  eventMinutesInWindow(events, key, stored.schedule),
+                )}
+              </>
+            )}
           </p>
+
           {estimateNote(insight) && (
             <p className="mt-0.5 text-[11px] text-muted-foreground/80">
               {estimateNote(insight)}
@@ -547,6 +635,14 @@ function PlanPage() {
             </Button>
           )}
           <Button
+            variant="outline"
+            size="sm"
+            onClick={() => openNewEvent()}
+            title="Add a meeting or appointment (m)"
+          >
+            <CalendarClock className="mr-1 h-3.5 w-3.5" /> Commitment
+          </Button>
+          <Button
             size="sm"
             onClick={runAutoScheduleForDay}
             disabled={needsSlot.length === 0}
@@ -554,6 +650,7 @@ function PlanPage() {
           >
             <Sparkles className="mr-1 h-3.5 w-3.5" /> Auto-schedule
           </Button>
+
           <div className="flex items-center gap-1">
             <Button variant="outline" size="sm" onClick={() => shiftDay(-1)}>
               <ChevronLeft className="h-4 w-4" />
@@ -598,10 +695,27 @@ function PlanPage() {
           onSetDuration={setDuration}
           tasks={tasks}
           dayKey={key}
+          events={dayEvents}
+          onEditEvent={openEditEvent}
+          onNewEventAt={openNewEvent}
         />
       ) : (
         <WeekView day={day} tasks={tasks} onSelectDay={setDay} />
       )}
+
+      <EventDialog
+        open={eventOpen}
+        onOpenChange={setEventOpen}
+        dateKey={key}
+        event={editingEvent}
+        defaultStartMin={eventStartMin}
+        onSave={(data) => {
+          if (editingEvent) updateEvent(editingEvent.id, data);
+          else addEvent(data);
+        }}
+        onDelete={removeEvent}
+      />
+
 
       <PlanRitual
         open={ritualOpen}
@@ -663,6 +777,9 @@ function DayView({
   onRemoveBlock,
   onSetDuration,
   tasks,
+  events,
+  onEditEvent,
+  onNewEventAt,
 }: {
   day: Date;
   dayKey: string;
@@ -675,7 +792,11 @@ function DayView({
   onRemoveBlock: (task: Task, partIndex: number) => void;
   onSetDuration: (id: string, m: number) => void;
   tasks: Task[];
+  events: CalEvent[];
+  onEditEvent: (e: CalEvent) => void;
+  onNewEventAt: (startMin: number) => void;
 }) {
+
   const gridRef = useRef<HTMLDivElement>(null);
   const [dragOverSlot, setDragOverSlot] = useState<number | null>(null);
   const [resizing, setResizing] = useState<{
@@ -800,6 +921,8 @@ function DayView({
             return (
               <div
                 key={i}
+                onDoubleClick={() => onNewEventAt(HOUR_START * 60 + i * SLOT_MIN)}
+                title="Double-click to add a commitment"
                 className={cn(
                   "absolute left-0 right-0 border-t",
                   isHour ? "border-border" : "border-border/40",
@@ -815,6 +938,38 @@ function DayView({
               </div>
             );
           })}
+
+          {/* Commitments: time already spoken for. Tasks pack around them. */}
+          {events.map((ev) => {
+            const top = ((ev.startMin - HOUR_START * 60) / SLOT_MIN) * SLOT_PX;
+            const height = Math.max(SLOT_PX, (ev.duration / SLOT_MIN) * SLOT_PX);
+            if (top + height < 0 || top > TOTAL_SLOTS * SLOT_PX) return null;
+            return (
+              <button
+                key={ev.id}
+                onClick={() => onEditEvent(ev)}
+                className={cn(
+                  "absolute left-12 right-1 overflow-hidden rounded-md border px-2 py-1 text-left text-xs",
+                  ev.soft
+                    ? "border-dashed border-muted-foreground/40 bg-muted/40 text-muted-foreground"
+                    : "border-muted-foreground/30 bg-muted text-foreground/80",
+                )}
+                style={{
+                  top: Math.max(0, top) + 1,
+                  height: height - 2,
+                  backgroundImage: ev.soft
+                    ? undefined
+                    : "repeating-linear-gradient(135deg, hsl(var(--muted-foreground)/0.07) 0 6px, transparent 6px 12px)",
+                }}
+              >
+                <span className="block truncate font-medium">{ev.title}</span>
+                <span className="block text-[10px] opacity-70">
+                  {clockLabel(ev.startMin)} · {ev.duration}m{ev.soft ? " · flexible" : ""}
+                </span>
+              </button>
+            );
+          })}
+
 
           {nowLineTop != null && (
             <div

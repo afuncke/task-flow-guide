@@ -29,6 +29,8 @@ const ACTIONS: Row[] = [
   { keys: ["R"], desc: "Re-run planning ritual" },
   { keys: ["L"], desc: "Soft landing for overdue tasks" },
   { keys: ["E"], desc: "Close the day (shutdown ritual)" },
+  { keys: ["m"], desc: "Add a meeting / commitment" },
+
 
   { keys: ["p"], desc: "Toggle playful mode" },
   { keys: ["Esc"], desc: "Close dialog / blur input" },
