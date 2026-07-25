@@ -38,6 +38,7 @@ function FocusPage() {
   const [editing, setEditing] = useState<Task | null>(null);
   const [skipped, setSkipped] = useState<string[]>([]);
   const [upNextOpen, setUpNextOpen] = useState(false);
+  const [pinnedId, setPinnedId] = useState<string | null>(null);
 
   const active = useMemo(() => tasks.filter((t) => t.status !== "done"), [tasks]);
   const scoped = useMemo(
@@ -45,9 +46,34 @@ function FocusPage() {
     [active, currentState, stored.hideMismatches],
   );
   const ranked = useMemo(() => rankTasks(scoped, currentState), [scoped, currentState]);
-  const visible = useMemo(() => ranked.filter((t) => !skipped.includes(t.id)), [ranked, skipped]);
+  const nextScheduled = useMemo(() => {
+    const now = Date.now();
+    return active
+      .filter((t) => t.scheduledStart && new Date(t.scheduledStart).getTime() + (t.scheduledDuration ?? 0) * 60_000 >= now)
+      .sort((a, b) => new Date(a.scheduledStart!).getTime() - new Date(b.scheduledStart!).getTime())[0];
+  }, [active]);
+  const visible = useMemo(() => {
+    const base = ranked.filter((t) => !skipped.includes(t.id));
+    if (pinnedId) {
+      const pinned = base.find((t) => t.id === pinnedId);
+      if (pinned) return [pinned, ...base.filter((t) => t.id !== pinnedId)];
+    }
+    return base;
+  }, [ranked, skipped, pinnedId]);
   const current = visible[0];
   const upNext = visible.slice(1, 4);
+
+  useEffect(() => {
+    const onKey = (e: Event) => {
+      const detail = (e as CustomEvent<string>).detail;
+      if (detail === "jump-scheduled" && nextScheduled) {
+        setSkipped([]);
+        setPinnedId(nextScheduled.id);
+      }
+    };
+    window.addEventListener("shenas:key", onKey);
+    return () => window.removeEventListener("shenas:key", onKey);
+  }, [nextScheduled]);
 
   const knownTags = useMemo(
     () => Array.from(new Set(tasks.flatMap((t) => t.tags))).sort(),
