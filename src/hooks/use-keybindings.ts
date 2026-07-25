@@ -139,6 +139,11 @@ export function useKeybindings(onShowHelp: () => void) {
           e.preventDefault();
           dispatch("shutdown");
           return;
+        case "m":
+          e.preventDefault();
+          dispatch("new-event");
+          return;
+
 
         case "p": {
           e.preventDefault();
