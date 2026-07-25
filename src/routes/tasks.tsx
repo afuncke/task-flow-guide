@@ -1,13 +1,16 @@
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useTasks } from "@/hooks/use-tasks";
+import { useContextState } from "@/hooks/use-context-state";
 import { rankTasks, urgency } from "@/lib/tasks/urgency";
+import { contextFit } from "@/lib/tasks/context";
 import type { Task } from "@/lib/tasks/types";
 import { TaskDialog } from "@/components/tasks/TaskDialog";
 import { TagFilterBar } from "@/components/tasks/TagFilterBar";
 import { TagChip } from "@/components/tasks/TagChip";
 import { DueBadge } from "@/components/tasks/DueBadge";
 import { UrgencyBadge } from "@/components/tasks/UrgencyBadge";
+import { ContextChips } from "@/components/tasks/ContextChips";
 import {
   Select,
   SelectContent,
