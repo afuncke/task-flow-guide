@@ -32,6 +32,8 @@ export function TaskCard({
   currentState?: CurrentState;
 }) {
   const fits = currentState ? contextFit(task, currentState) : true;
+  const { areaById } = useAreas();
+
   return (
     <div
       className={`group cursor-pointer rounded-lg border bg-card p-3 shadow-sm transition-colors hover:border-primary/40 ${fits ? "" : "opacity-60"}`}
@@ -73,9 +75,11 @@ export function TaskCard({
       </div>
 
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
+        <AreaChip area={areaById(task.areaId)} />
         {task.tags.map((t) => (
           <TagChip key={t} tag={t} />
         ))}
+
         <DueBadge due={task.due} />
         <ContextChips context={task.context} muted={!fits} />
         {task.priority && (

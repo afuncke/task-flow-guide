@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { taskDialogStore } from "@/lib/tasks/dialog-store";
 import { captureStore } from "@/lib/tasks/capture-store";
+import { areaStore } from "@/lib/tasks/areas";
+
 
 import { playfulStore } from "@/lib/playful/store";
 import { celebrate, toast } from "@/lib/playful/celebrate";
@@ -90,6 +92,14 @@ export function useKeybindings(onShowHelp: () => void) {
           e.preventDefault();
           captureStore.open();
           return;
+        case "a": {
+          e.preventDefault();
+          const next = areaStore.cycleFilter();
+          const area = areaStore.getSnapshot().areas.find((x) => x.id === next);
+          toast(area ? `Area: ${area.name}` : "All areas");
+          return;
+        }
+
 
         case "?":
           e.preventDefault();
