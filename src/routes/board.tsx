@@ -26,37 +26,85 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
+import { ChevronDown, ChevronRight } from "lucide-react";
 
 export const Route = createFileRoute("/board")({
   head: () => ({
     meta: [
       { title: "Board — Shenas" },
-      { name: "description", content: "Kanban overview of your tasks." },
+      { name: "description", content: "Backlog, My Day, Focused, Done — your work at a glance." },
       { property: "og:title", content: "Board — Shenas" },
-      { property: "og:description", content: "Kanban overview of your tasks." },
+      { property: "og:description", content: "Backlog, My Day, Focused, Done — your work at a glance." },
     ],
   }),
   component: BoardPage,
 });
 
-const COLUMNS: { status: TaskStatus; label: string }[] = [
-  { status: "todo", label: "Todo" },
-  { status: "doing", label: "Doing" },
-  { status: "done", label: "Done" },
+type BoardColumn = "backlog" | "myday" | "focused" | "done";
+
+const COLUMNS: { id: BoardColumn; label: string; hint?: string }[] = [
+  { id: "backlog", label: "Backlog", hint: "Uncommitted" },
+  { id: "myday", label: "My Day", hint: "Committed for today" },
+  { id: "focused", label: "Focused", hint: "Now" },
+  { id: "done", label: "Done" },
 ];
 
-type ColumnMap = Record<TaskStatus, Task[]>;
+type ColumnMap = Record<BoardColumn, Task[]>;
+
+function todayKey(): string {
+  const d = new Date();
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+function columnOf(t: Task, today: string): BoardColumn {
+  if (t.status === "doing") return "focused";
+  if (t.status === "done") return "done";
+  if (t.myDay === today) return "myday";
+  return "backlog";
+}
+
+function patchForColumn(col: BoardColumn, orig: Task, today: string): Partial<Task> {
+  const patch: Partial<Task> = {};
+  switch (col) {
+    case "backlog":
+      if (orig.status !== "todo") patch.status = "todo";
+      if (orig.myDay === today) patch.myDay = undefined;
+      if (orig.status === "done") patch.completedAt = undefined;
+      break;
+    case "myday":
+      if (orig.status !== "todo") patch.status = "todo";
+      if (orig.myDay !== today) patch.myDay = today;
+      if (orig.status === "done") patch.completedAt = undefined;
+      break;
+    case "focused":
+      if (orig.status !== "doing") patch.status = "doing";
+      if (orig.status === "done") patch.completedAt = undefined;
+      break;
+    case "done":
+      if (orig.status !== "done") {
+        patch.status = "done";
+        patch.completedAt = new Date().toISOString();
+      }
+      break;
+  }
+  return patch;
+}
 
 function BoardPage() {
-  const { tasks, hydrated, addTask, updateTask, setStatus, deleteTask, bulkUpdate } = useTasks();
+  const { tasks, allTasks, hydrated, addTask, updateTask, setStatus, deleteTask, bulkUpdate } =
+    useTasks();
   const { currentState, stored } = useContextState();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const [activeTags, setActiveTags] = useState<string[]>([]);
   const [showAllDone, setShowAllDone] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
-  // Optimistic override of column contents while dragging (before persist)
   const [override, setOverride] = useState<ColumnMap | null>(null);
+  const [deferredOpen, setDeferredOpen] = useState(false);
+  const [letGoOpen, setLetGoOpen] = useState(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const knownTags = useMemo(
@@ -75,11 +123,14 @@ function BoardPage() {
     return list;
   }, [tasks, activeTags, stored.hideMismatches, currentState]);
 
-  const baseByStatus = useMemo<ColumnMap>(() => {
-    const map: ColumnMap = { todo: [], doing: [], done: [] };
-    for (const t of filtered) map[t.status].push(t);
-    map.todo = rankTasks(map.todo, currentState);
-    map.doing = rankTasks(map.doing, currentState);
+  const today = todayKey();
+
+  const baseByColumn = useMemo<ColumnMap>(() => {
+    const map: ColumnMap = { backlog: [], myday: [], focused: [], done: [] };
+    for (const t of filtered) map[columnOf(t, today)].push(t);
+    map.backlog = rankTasks(map.backlog, currentState);
+    map.myday = rankTasks(map.myday, currentState);
+    map.focused = rankTasks(map.focused, currentState);
     map.done = [...map.done].sort((a, b) => {
       const ao = a.order ?? Number.POSITIVE_INFINITY;
       const bo = b.order ?? Number.POSITIVE_INFINITY;
@@ -87,9 +138,24 @@ function BoardPage() {
       return (b.completedAt ?? b.createdAt).localeCompare(a.completedAt ?? a.createdAt);
     });
     return map;
-  }, [filtered, currentState]);
+  }, [filtered, currentState, today]);
 
-  const byStatus = override ?? baseByStatus;
+  const byColumn = override ?? baseByColumn;
+
+  const deferred = useMemo(
+    () =>
+      tasks
+        .filter((t) => (t.rescheduleCount ?? 0) >= 1 && t.status !== "done")
+        .sort((a, b) => (b.rescheduleCount ?? 0) - (a.rescheduleCount ?? 0)),
+    [tasks],
+  );
+  const letGo = useMemo(
+    () =>
+      allTasks
+        .filter((t) => t.archived)
+        .sort((a, b) => (b.archivedAt ?? "").localeCompare(a.archivedAt ?? "")),
+    [allTasks],
+  );
 
   if (!hydrated) return null;
 
@@ -98,9 +164,9 @@ function BoardPage() {
     setDialogOpen(true);
   };
 
-  const findContainer = (id: string, source: ColumnMap): TaskStatus | null => {
-    if (id === "todo" || id === "doing" || id === "done") return id;
-    for (const s of ["todo", "doing", "done"] as TaskStatus[]) {
+  const findContainer = (id: string, source: ColumnMap): BoardColumn | null => {
+    if (id === "backlog" || id === "myday" || id === "focused" || id === "done") return id;
+    for (const s of ["backlog", "myday", "focused", "done"] as BoardColumn[]) {
       if (source[s].some((t) => t.id === id)) return s;
     }
     return null;
@@ -110,7 +176,7 @@ function BoardPage() {
 
   const handleDragStart = (e: DragStartEvent) => {
     setActiveId(String(e.active.id));
-    setOverride(baseByStatus);
+    setOverride(baseByColumn);
   };
 
   const handleDragOver = (e: DragOverEvent) => {
@@ -123,7 +189,7 @@ function BoardPage() {
     if (!from || !to || from === to) return;
 
     setOverride((prev) => {
-      const src = prev ?? baseByStatus;
+      const src = prev ?? baseByColumn;
       const fromList = [...src[from]];
       const toList = [...src[to]];
       const idx = fromList.findIndex((t) => t.id === activeIdStr);
@@ -131,7 +197,7 @@ function BoardPage() {
       const [moved] = fromList.splice(idx, 1);
       const overIdx = toList.findIndex((t) => t.id === overIdStr);
       const insertAt = overIdx === -1 ? toList.length : overIdx;
-      toList.splice(insertAt, 0, { ...moved, status: to });
+      toList.splice(insertAt, 0, moved);
       return { ...src, [from]: fromList, [to]: toList };
     });
   };
@@ -160,18 +226,12 @@ function BoardPage() {
       finalMap = { ...override, [container]: reordered };
     }
 
-    // Persist: for each column that changed vs base, write order (and status where different).
     const patches: Record<string, Partial<Task>> = {};
-    for (const status of ["todo", "doing", "done"] as TaskStatus[]) {
-      finalMap[status].forEach((t, i) => {
+    for (const col of ["backlog", "myday", "focused", "done"] as BoardColumn[]) {
+      finalMap[col].forEach((t, i) => {
         const orig = tasks.find((x) => x.id === t.id);
         if (!orig) return;
-        const patch: Partial<Task> = {};
-        if (orig.status !== status) {
-          patch.status = status;
-          if (status === "done") patch.completedAt = new Date().toISOString();
-          else if (orig.status === "done") patch.completedAt = undefined;
-        }
+        const patch = patchForColumn(col, orig, today);
         if (orig.order !== i) patch.order = i;
         if (Object.keys(patch).length > 0) patches[t.id] = patch;
       });
@@ -179,6 +239,8 @@ function BoardPage() {
     if (Object.keys(patches).length > 0) bulkUpdate(patches);
     setOverride(null);
   };
+
+  const focusedCount = byColumn.focused.length;
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
@@ -203,30 +265,38 @@ function BoardPage() {
           setOverride(null);
         }}
       >
-        <div className="grid gap-4 md:grid-cols-3">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
           {COLUMNS.map((col) => {
-            const items = byStatus[col.status];
+            const items = byColumn[col.id];
             const display =
-              col.status === "done" && !showAllDone ? items.slice(0, 10) : items;
+              col.id === "done" && !showAllDone ? items.slice(0, 10) : items;
+            const wipWarn = col.id === "focused" && focusedCount > 3;
             return (
               <SortableColumn
-                key={col.status}
-                status={col.status}
+                key={col.id}
+                id={col.id}
                 label={col.label}
+                hint={col.hint}
                 count={items.length}
                 itemIds={display.map((t) => t.id)}
-                onQuickAdd={(title) =>
-                  addTask({
+                wipWarn={wipWarn}
+                onQuickAdd={(title) => {
+                  const base = {
                     title,
                     tags: [],
-                    priority: null,
-                    status: col.status,
+                    priority: null as Task["priority"],
                     order: -1,
-                    ...(col.status === "done"
-                      ? { completedAt: new Date().toISOString() }
-                      : {}),
-                  })
-                }
+                  };
+                  if (col.id === "done") {
+                    addTask({ ...base, status: "done", completedAt: new Date().toISOString() });
+                  } else if (col.id === "focused") {
+                    addTask({ ...base, status: "doing" });
+                  } else if (col.id === "myday") {
+                    addTask({ ...base, status: "todo", myDay: today });
+                  } else {
+                    addTask({ ...base, status: "todo" });
+                  }
+                }}
               >
                 {display.map((t) => (
                   <SortableTask key={t.id} id={t.id} dimmed={activeId === t.id}>
@@ -244,7 +314,7 @@ function BoardPage() {
                     Nothing here
                   </div>
                 )}
-                {col.status === "done" && items.length > 10 && (
+                {col.id === "done" && items.length > 10 && (
                   <button
                     className="w-full text-center text-xs text-muted-foreground hover:text-foreground"
                     onClick={() => setShowAllDone((v) => !v)}
@@ -265,6 +335,72 @@ function BoardPage() {
         </DragOverlay>
       </DndContext>
 
+      <div className="mt-8 space-y-3">
+        <Drawer
+          label="Deferred"
+          count={deferred.length}
+          open={deferredOpen}
+          onToggle={() => setDeferredOpen((v) => !v)}
+          hint="Rescheduled at least once — gentle reminder, not a scolding."
+        >
+          {deferred.length === 0 ? (
+            <p className="px-1 py-2 text-xs text-muted-foreground">Nothing deferred.</p>
+          ) : (
+            <ul className="space-y-1">
+              {deferred.map((t) => (
+                <li
+                  key={t.id}
+                  className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-muted/60"
+                >
+                  <button
+                    className="flex-1 truncate text-left"
+                    onClick={() => openEdit(t)}
+                  >
+                    {t.title}
+                  </button>
+                  <span className="ml-2 shrink-0 text-xs text-muted-foreground">
+                    moved {t.rescheduleCount ?? 0}×
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Drawer>
+
+        <Drawer
+          label="Let go"
+          count={letGo.length}
+          open={letGoOpen}
+          onToggle={() => setLetGoOpen((v) => !v)}
+          hint="Archived without guilt. Bring one back any time."
+        >
+          {letGo.length === 0 ? (
+            <p className="px-1 py-2 text-xs text-muted-foreground">Nothing here yet.</p>
+          ) : (
+            <ul className="space-y-1">
+              {letGo.map((t) => (
+                <li
+                  key={t.id}
+                  className="flex items-center justify-between rounded-md px-2 py-1.5 text-sm hover:bg-muted/60"
+                >
+                  <span className="flex-1 truncate text-muted-foreground line-through">
+                    {t.title}
+                  </span>
+                  <button
+                    className="ml-2 shrink-0 text-xs text-primary hover:underline"
+                    onClick={() =>
+                      updateTask(t.id, { archived: false, archivedAt: undefined, status: "todo" })
+                    }
+                  >
+                    bring back
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Drawer>
+      </div>
+
       <TaskDialog
         open={dialogOpen}
         onOpenChange={setDialogOpen}
@@ -281,21 +417,25 @@ function BoardPage() {
 }
 
 function SortableColumn({
-  status,
+  id,
   label,
+  hint,
   count,
   itemIds,
+  wipWarn,
   onQuickAdd,
   children,
 }: {
-  status: TaskStatus;
+  id: BoardColumn;
   label: string;
+  hint?: string;
   count: number;
   itemIds: string[];
+  wipWarn?: boolean;
   onQuickAdd: (title: string) => void;
   children: React.ReactNode;
 }) {
-  const { isOver, setNodeRef } = useDroppable({ id: status });
+  const { isOver, setNodeRef } = useDroppable({ id });
   const [draft, setDraft] = useState("");
   const submit = () => {
     const v = draft.trim();
@@ -308,10 +448,16 @@ function SortableColumn({
       ref={setNodeRef}
       className={`rounded-lg p-3 transition-colors ${isOver ? "bg-primary/10 ring-2 ring-primary/40" : "bg-muted/40"}`}
     >
-      <div className="mb-3 flex items-center justify-between px-1">
+      <div className="mb-1 flex items-baseline justify-between px-1">
         <h2 className="text-sm font-semibold">{label}</h2>
         <span className="text-xs text-muted-foreground">{count}</span>
       </div>
+      {hint && <p className="mb-2 px-1 text-[11px] text-muted-foreground">{hint}</p>}
+      {wipWarn && (
+        <p className="mb-2 rounded-md bg-amber-500/10 px-2 py-1 text-[11px] text-amber-700 dark:text-amber-400">
+          {count} in focus — consider narrowing to one.
+        </p>
+      )}
       <input
         type="text"
         value={draft}
@@ -322,7 +468,7 @@ function SortableColumn({
             submit();
           }
         }}
-        placeholder={`+ Add to ${label.toLowerCase()}`}
+        placeholder={`+ Add to ${label}`}
         aria-label={`Quick add task to ${label}`}
         className="mb-2 w-full rounded-md border bg-background px-2 py-1.5 text-xs placeholder:text-muted-foreground focus:border-primary focus:outline-none"
       />
@@ -352,6 +498,47 @@ function SortableTask({
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners}>
       {children}
+    </div>
+  );
+}
+
+function Drawer({
+  label,
+  count,
+  open,
+  onToggle,
+  hint,
+  children,
+}: {
+  label: string;
+  count: number;
+  open: boolean;
+  onToggle: () => void;
+  hint?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="rounded-lg border bg-muted/20">
+      <button
+        onClick={onToggle}
+        className="flex w-full items-center justify-between px-3 py-2 text-left"
+      >
+        <span className="flex items-center gap-2 text-sm font-medium">
+          {open ? (
+            <ChevronDown className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          )}
+          {label}
+          <span className="text-xs text-muted-foreground">({count})</span>
+        </span>
+      </button>
+      {open && (
+        <div className="border-t px-3 py-2">
+          {hint && <p className="mb-2 text-[11px] text-muted-foreground">{hint}</p>}
+          {children}
+        </div>
+      )}
     </div>
   );
 }
