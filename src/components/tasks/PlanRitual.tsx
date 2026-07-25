@@ -11,6 +11,8 @@ import { dayBudget, areaSplit, untouchedAreas } from "@/lib/tasks/day-budget";
 import { CapacityMeter } from "./CapacityMeter";
 import { AreaBalance } from "./AreaBalance";
 import { useAreas } from "@/hooks/use-areas";
+import { useEvents, eventBusyRanges, eventMinutesInWindow } from "@/lib/tasks/events";
+
 
 import { DueBadge } from "./DueBadge";
 import { TagChip } from "./TagChip";
