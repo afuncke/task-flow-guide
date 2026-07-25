@@ -63,11 +63,12 @@ export function CaptureBar() {
         <div className="flex items-center justify-between text-xs text-muted-foreground">
           <span>
             {count === 0
-              ? "Enter to capture — no need to decide anything yet."
+              ? "Enter to capture — a title is enough, the rest gets suggested later."
               : `${count} captured. Keep going, or Esc to close.`}
           </span>
           <span className="hidden sm:inline">Sorts into Inbox</span>
         </div>
+
       </DialogContent>
     </Dialog>
   );
