@@ -17,4 +17,6 @@ export interface Task {
   context?: TaskContext;
   scheduledStart?: string; // ISO datetime — planned block start
   scheduledDuration?: number; // minutes
+  myDay?: string; // ISO date the user pinned this task to (separate from due)
+  actualDuration?: number; // minutes actually spent, recorded by focus timer
 }
