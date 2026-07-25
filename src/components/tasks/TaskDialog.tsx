@@ -140,6 +140,7 @@ export function TaskDialog({
       due: due || undefined,
       context: hasCtx ? context : undefined,
       scheduledDuration: typeof duration === "number" && duration > 0 ? duration : undefined,
+      subtasks: subtasks.filter((s) => s.title.trim()),
     });
     onOpenChange(false);
   };
@@ -176,6 +177,13 @@ export function TaskDialog({
               placeholder="Optional context"
             />
           </div>
+
+          <div className="space-y-1.5">
+            <Label>Steps</Label>
+            <SubtaskList value={subtasks} onChange={setSubtasks} />
+          </div>
+
+
 
           <div className="space-y-1.5">
             <Label>Area of responsibility</Label>
