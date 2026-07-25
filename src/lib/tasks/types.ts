@@ -15,4 +15,6 @@ export interface Task {
   completedAt?: string;
   order?: number; // manual sort within its status column
   context?: TaskContext;
+  scheduledStart?: string; // ISO datetime — planned block start
+  scheduledDuration?: number; // minutes
 }

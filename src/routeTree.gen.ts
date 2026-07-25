@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TasksRouteImport } from './routes/tasks'
+import { Route as PlanRouteImport } from './routes/plan'
 import { Route as FocusRouteImport } from './routes/focus'
 import { Route as CalendarRouteImport } from './routes/calendar'
 import { Route as BoardRouteImport } from './routes/board'
@@ -18,6 +19,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const TasksRoute = TasksRouteImport.update({
   id: '/tasks',
   path: '/tasks',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PlanRoute = PlanRouteImport.update({
+  id: '/plan',
+  path: '/plan',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FocusRoute = FocusRouteImport.update({
@@ -46,6 +52,7 @@ export interface FileRoutesByFullPath {
   '/board': typeof BoardRoute
   '/calendar': typeof CalendarRoute
   '/focus': typeof FocusRoute
+  '/plan': typeof PlanRoute
   '/tasks': typeof TasksRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +60,7 @@ export interface FileRoutesByTo {
   '/board': typeof BoardRoute
   '/calendar': typeof CalendarRoute
   '/focus': typeof FocusRoute
+  '/plan': typeof PlanRoute
   '/tasks': typeof TasksRoute
 }
 export interface FileRoutesById {
@@ -61,14 +69,15 @@ export interface FileRoutesById {
   '/board': typeof BoardRoute
   '/calendar': typeof CalendarRoute
   '/focus': typeof FocusRoute
+  '/plan': typeof PlanRoute
   '/tasks': typeof TasksRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/board' | '/calendar' | '/focus' | '/tasks'
+  fullPaths: '/' | '/board' | '/calendar' | '/focus' | '/plan' | '/tasks'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/board' | '/calendar' | '/focus' | '/tasks'
-  id: '__root__' | '/' | '/board' | '/calendar' | '/focus' | '/tasks'
+  to: '/' | '/board' | '/calendar' | '/focus' | '/plan' | '/tasks'
+  id: '__root__' | '/' | '/board' | '/calendar' | '/focus' | '/plan' | '/tasks'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -76,6 +85,7 @@ export interface RootRouteChildren {
   BoardRoute: typeof BoardRoute
   CalendarRoute: typeof CalendarRoute
   FocusRoute: typeof FocusRoute
+  PlanRoute: typeof PlanRoute
   TasksRoute: typeof TasksRoute
 }
 
@@ -86,6 +96,13 @@ declare module '@tanstack/react-router' {
       path: '/tasks'
       fullPath: '/tasks'
       preLoaderRoute: typeof TasksRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/plan': {
+      id: '/plan'
+      path: '/plan'
+      fullPath: '/plan'
+      preLoaderRoute: typeof PlanRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/focus': {
@@ -124,18 +141,9 @@ const rootRouteChildren: RootRouteChildren = {
   BoardRoute: BoardRoute,
   CalendarRoute: CalendarRoute,
   FocusRoute: FocusRoute,
+  PlanRoute: PlanRoute,
   TasksRoute: TasksRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
