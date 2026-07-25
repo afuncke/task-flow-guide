@@ -10,6 +10,8 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { DueBadge } from "@/components/tasks/DueBadge";
+import { AreaChip } from "@/components/tasks/AreaChip";
+
 import {
   ChevronDown,
   ChevronRight,
@@ -195,6 +197,8 @@ function ProjectRow({
   onComplete: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const { areaById } = useAreas();
+
   const [draft, setDraft] = useState("");
   const children = projectChildren(project.id, all);
   const next = nextActionOf(project.id, all);
