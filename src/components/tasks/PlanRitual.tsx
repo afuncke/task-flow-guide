@@ -67,6 +67,28 @@ export function PlanRitual({
     return { alreadyPinned: already, suggested: ranked };
   }, [tasks, todayKey, currentState]);
 
+  // Live budget: feel the commitment while making it, not at six in the evening.
+  const pickedTasks = useMemo(
+    () => tasks.filter((t) => picks.has(t.id) && t.status !== "done"),
+    [tasks, picks],
+  );
+  const budget = useMemo(
+    () =>
+      dayBudget(pickedTasks, stored.schedule, {
+        factor: insight.factor,
+        isToday: todayKey === dateKeyOf(new Date()),
+      }),
+    [pickedTasks, stored.schedule, insight.factor, todayKey],
+  );
+  const split = useMemo(
+    () => areaSplit(pickedTasks, tasks, areas, insight.factor),
+    [pickedTasks, tasks, areas, insight.factor],
+  );
+  const untouched = useMemo(
+    () => untouchedAreas(split, areas, tasks),
+    [split, areas, tasks],
+  );
+
   // Seed picks with anything already pinned to today
   useMemo(() => {
     setPicks((prev) => {
