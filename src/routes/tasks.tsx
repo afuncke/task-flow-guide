@@ -38,8 +38,10 @@ export const Route = createFileRoute("/tasks")({
 type SortKey = "urgency" | "due" | "created";
 
 function ListPage() {
-  const { tasks, hydrated, addTask, updateTask, setStatus, deleteTask } = useTasks();
+  const { tasks, aliveTasks, hydrated, addTask, updateTask, setStatus, deleteTask } = useTasks();
+  const { filter: areaFilter } = useAreas();
   const { currentState, stored } = useContextState();
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const [activeTags, setActiveTags] = useState<string[]>([]);
