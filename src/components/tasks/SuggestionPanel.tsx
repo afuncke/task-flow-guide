@@ -20,13 +20,60 @@ import {
   type SuggestedKind,
   type Suggestion,
 } from "@/lib/tasks/suggest";
+import { suggestWithAssistant, type AiSuggestion } from "@/lib/tasks/suggest.functions";
 import {
   DURATION_LABEL,
   ENERGY_LABEL,
   LOCATION_LABEL,
   WORK_WINDOW_LABEL,
 } from "@/lib/tasks/context";
+import type { Energy, Location, WorkWindow } from "@/lib/tasks/context";
 import type { Task, TaskPriority } from "@/lib/tasks/types";
+
+const KINDS: SuggestedKind[] = ["do-now", "next", "project", "waiting", "someday"];
+
+/**
+ * The model only ever *proposes*. Anything it returns that we can't recognise
+ * falls back to the local heuristic so the panel is never left half-filled.
+ */
+function mergeAiSuggestion(
+  base: Suggestion,
+  ai: AiSuggestion,
+  areaIds: string[],
+  projectIds: string[],
+): Suggestion {
+  const kind = KINDS.includes(ai.kind as SuggestedKind) ? (ai.kind as SuggestedKind) : base.kind;
+  const priority = (["H", "M", "L"] as const).includes(ai.priority as "H")
+    ? (ai.priority as TaskPriority)
+    : null;
+  const minutes = [10, 15, 30, 45, 60, 90].includes(ai.minutes) ? ai.minutes : base.scheduledDuration;
+  const oneOf = <T extends string>(v: string, allowed: readonly T[], fallback: T): T =>
+    (allowed as readonly string[]).includes(v) ? (v as T) : fallback;
+
+  return {
+    ...base,
+    kind,
+    title: ai.title.trim() || base.title,
+    tags: ai.tags.map((t) => t.trim().toLowerCase()).filter(Boolean).slice(0, 3),
+    priority,
+    due: /^\d{4}-\d{2}-\d{2}$/.test(ai.due) ? ai.due : base.due,
+    scheduledDuration: minutes,
+    context: {
+      location: oneOf<Location>(ai.location, ["anywhere", "home", "office", "errands"], "anywhere"),
+      energy: oneOf<Energy>(ai.energy, ["any", "low", "medium", "high"], "medium"),
+      duration: minutes && minutes <= 15 ? "quick" : minutes && minutes <= 60 ? "medium" : "deep",
+      workWindow: oneOf<WorkWindow>(ai.workWindow, ["any", "work", "personal"], "any"),
+    },
+    areaId: areaIds.includes(ai.areaId) ? ai.areaId : undefined,
+    projectId: kind !== "project" && projectIds.includes(ai.projectId) ? ai.projectId : undefined,
+    waitingOn: kind === "waiting" ? ai.waitingOn || base.waitingOn : undefined,
+    firstAction: kind === "project" ? ai.firstAction || base.firstAction : undefined,
+    confidence: ai.confidence > 0 && ai.confidence <= 1 ? ai.confidence : base.confidence,
+    headline: ai.headline.trim() || base.headline,
+    reasons: ai.reasons.filter(Boolean).length ? ai.reasons.filter(Boolean) : base.reasons,
+  };
+}
+
 
 const KIND_LABEL: Record<SuggestedKind, string> = {
   "do-now": "Do it now",
@@ -54,6 +101,7 @@ export function SuggestionPanel({
   const { currentState } = useContextState();
   const [thinking, setThinking] = useState(true);
   const [draft, setDraft] = useState<Suggestion | null>(null);
+  const [assisted, setAssisted] = useState(false);
 
   // Deliberately keyed on stable primitives: the surrounding hooks hand back
   // fresh object identities every render, which would otherwise restart the
@@ -66,13 +114,42 @@ export function SuggestionPanel({
   );
 
   useEffect(() => {
+    let cancelled = false;
     setThinking(true);
     setDraft(null);
-    const id = window.setTimeout(() => {
-      setDraft(base);
-      setThinking(false);
-    }, 550);
-    return () => window.clearTimeout(id);
+    setAssisted(false);
+
+    void (async () => {
+      try {
+        const ai = await suggestWithAssistant({
+          data: {
+            title: task.title,
+            notes: task.notes,
+            today: new Date().toISOString().slice(0, 10),
+            state: JSON.parse(stateKey),
+            areas: areas.map((a) => ({ id: a.id, name: a.name })),
+            knownTags: Array.from(new Set(allTasks.flatMap((t) => t.tags))).slice(0, 40),
+            projects: projects.map((p) => ({ id: p.id, title: p.title })),
+          },
+        });
+        if (cancelled) return;
+        if (ai) {
+          setDraft(mergeAiSuggestion(base, ai, areas.map((a) => a.id), projects.map((p) => p.id)));
+          setAssisted(true);
+        } else {
+          setDraft(base);
+        }
+      } catch {
+        if (!cancelled) setDraft(base);
+      } finally {
+        if (!cancelled) setThinking(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [base]);
 
   if (thinking || !draft) {
@@ -84,6 +161,7 @@ export function SuggestionPanel({
     );
   }
 
+
   const set = (patch: Partial<Suggestion>) => setDraft({ ...draft, ...patch });
 
   return (
@@ -93,7 +171,9 @@ export function SuggestionPanel({
         <div className="min-w-0">
           <div className="text-sm font-medium">{draft.headline}</div>
           <div className="text-xs text-muted-foreground">
-            Suggested setup — {confidenceLabel(draft.confidence)}. Everything below is editable.
+            {assisted ? "Assistant's setup" : "Suggested setup"} — {confidenceLabel(draft.confidence)}.
+            Everything below is editable.
+
           </div>
         </div>
       </div>
