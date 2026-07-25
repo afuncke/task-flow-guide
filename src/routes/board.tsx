@@ -237,6 +237,12 @@ function BoardPage() {
       });
     }
     if (Object.keys(patches).length > 0) bulkUpdate(patches);
+    if (container === "done" && tasks.find((t) => t.id === activeIdStr)?.status !== "done") {
+      soundComplete();
+      celebrate();
+    } else {
+      soundDrop();
+    }
     setOverride(null);
   };
 
