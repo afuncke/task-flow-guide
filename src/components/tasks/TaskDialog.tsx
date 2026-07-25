@@ -119,6 +119,7 @@ export function TaskDialog({
       priority,
       due: due || undefined,
       context: hasCtx ? context : undefined,
+      scheduledDuration: typeof duration === "number" && duration > 0 ? duration : undefined,
     });
     onOpenChange(false);
   };
