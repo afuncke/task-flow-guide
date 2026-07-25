@@ -12,7 +12,7 @@ import { dayBudget, areaSplit, untouchedAreas } from "@/lib/tasks/day-budget";
 import { CapacityMeter } from "@/components/tasks/CapacityMeter";
 import { AreaBalance } from "@/components/tasks/AreaBalance";
 import { ShutdownRitual } from "@/components/tasks/ShutdownRitual";
-import { phaseOf } from "@/lib/time-of-day";
+import { phaseAt } from "@/lib/time-of-day";
 import { forecastDeadlines } from "@/lib/tasks/forecast";
 import { DeadlineForecast } from "@/components/tasks/DeadlineForecast";
 import { toast } from "@/lib/playful/celebrate";
