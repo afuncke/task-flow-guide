@@ -37,6 +37,7 @@ type SortKey = "urgency" | "due" | "created";
 
 function ListPage() {
   const { tasks, hydrated, addTask, updateTask, setStatus, deleteTask } = useTasks();
+  const { currentState, stored } = useContextState();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const [activeTags, setActiveTags] = useState<string[]>([]);
@@ -54,12 +55,15 @@ function ListPage() {
     if (activeTags.length > 0) {
       list = list.filter((t) => activeTags.every((tag) => t.tags.includes(tag)));
     }
-    if (sort === "urgency") return rankTasks(list);
+    if (stored.hideMismatches) {
+      list = list.filter((t) => contextFit(t, currentState));
+    }
+    if (sort === "urgency") return rankTasks(list, currentState);
     if (sort === "due") {
       return [...list].sort((a, b) => (a.due ?? "9999").localeCompare(b.due ?? "9999"));
     }
     return [...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  }, [tasks, activeTags, sort, showDone]);
+  }, [tasks, activeTags, sort, showDone, stored.hideMismatches, currentState]);
 
   if (!hydrated) return null;
 
