@@ -331,9 +331,14 @@ export function PlanRitual({
                 </div>
               )}
             </Section>
-            <div className="text-xs text-muted-foreground">
-              {picks.size} picked · {formatMin(totalPickedMin)} estimated
+            <div className="sticky bottom-0 space-y-2 border-t bg-background pt-3">
+              <div className="text-xs text-muted-foreground">
+                {picks.size} picked · {formatMin(totalPickedMin)} estimated
+              </div>
+              <CapacityMeter budget={budget} label="Picked" />
+              <AreaBalance split={split} untouched={untouched} />
             </div>
+
           </div>
         )}
 
