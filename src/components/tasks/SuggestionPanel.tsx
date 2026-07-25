@@ -56,7 +56,7 @@ function mergeAiSuggestion(
     title: ai.title.trim() || base.title,
     tags: ai.tags.map((t) => t.trim().toLowerCase()).filter(Boolean).slice(0, 3),
     priority,
-    due: /^\d{4}-\d{2}-\d{2}$/.test(ai.due) ? ai.due : undefined,
+    due: /^\d{4}-\d{2}-\d{2}$/.test(ai.due) ? ai.due : base.due,
     scheduledDuration: minutes,
     context: {
       location: oneOf<Location>(ai.location, ["anywhere", "home", "office", "errands"], "anywhere"),
