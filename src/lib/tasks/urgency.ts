@@ -1,4 +1,5 @@
 import type { Task } from "./types";
+import { contextFit, type CurrentState } from "./context";
 
 const DAY = 1000 * 60 * 60 * 24;
 
@@ -31,11 +32,16 @@ export function urgency(task: Task): number {
   return Math.round(score * 10) / 10;
 }
 
-export function rankTasks(tasks: Task[]): Task[] {
+export function rankTasks(tasks: Task[], state?: CurrentState): Task[] {
   return [...tasks].sort((a, b) => {
     const ao = a.order ?? Number.POSITIVE_INFINITY;
     const bo = b.order ?? Number.POSITIVE_INFINITY;
     if (ao !== bo) return ao - bo;
+    if (state) {
+      const af = contextFit(a, state) ? 1 : 0;
+      const bf = contextFit(b, state) ? 1 : 0;
+      if (af !== bf) return bf - af; // fitting tasks first
+    }
     const diff = urgency(b) - urgency(a);
     if (diff !== 0) return diff;
     return a.createdAt.localeCompare(b.createdAt);
