@@ -87,7 +87,9 @@ export function TaskDialog({
     if (open) {
       setTitle(task?.title ?? "");
       setNotes(task?.notes ?? "");
+      setAreaId(task?.areaId ?? "none");
       setTags(task?.tags ?? []);
+
       setTagInput("");
       setPriority(task?.priority ?? null);
       setDue(task?.due ?? defaultDue ?? "");
