@@ -632,6 +632,19 @@ function PlanPage() {
           updateTask(id, { archived: true, archivedAt: new Date().toISOString() })
         }
       />
+
+      <ShutdownRitual
+        open={shutdownOpen}
+        onOpenChange={setShutdownOpen}
+        tasks={allTasks}
+        todayKey={todayKey}
+        onBulkUpdate={bulkUpdate}
+        onArchive={(id) =>
+          updateTask(id, { archived: true, archivedAt: new Date().toISOString() })
+        }
+        onComplete={() => markShutdown(todayKey, true)}
+      />
+
     </div>
   );
 }
