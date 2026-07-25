@@ -174,7 +174,35 @@ export function TaskDialog({
           </div>
 
           <div className="space-y-1.5">
+            <Label>Area of responsibility</Label>
+            <Select value={areaId} onValueChange={setAreaId}>
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">No area</SelectItem>
+                {areas.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    <span className="flex items-center gap-2">
+                      <span
+                        className="h-2 w-2 rounded-full"
+                        style={{ backgroundColor: areaColor(a.hue) }}
+                        aria-hidden
+                      />
+                      {a.name}
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {task?.projectId && areaId === "none" && (
+              <p className="text-xs text-muted-foreground">Inherits its project's area.</p>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
             <Label>Tags</Label>
+
             <div className="flex flex-wrap gap-1.5">
               {tags.map((t) => (
                 <TagChip key={t} tag={t} onRemove={() => setTags(tags.filter((x) => x !== t))} />
