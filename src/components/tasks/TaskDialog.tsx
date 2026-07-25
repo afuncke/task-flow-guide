@@ -18,7 +18,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { TagChip } from "./TagChip";
-import type { Task, TaskPriority } from "@/lib/tasks/types";
+import { SubtaskList } from "./SubtaskList";
+import type { Subtask, Task, TaskPriority } from "@/lib/tasks/types";
 import {
   DURATIONS,
   DURATION_LABEL,
@@ -52,6 +53,7 @@ export interface TaskDialogProps {
     context?: TaskContext;
     scheduledDuration?: number;
     areaId?: string;
+    subtasks?: Subtask[];
   }) => void;
   onDelete?: () => void;
 }
