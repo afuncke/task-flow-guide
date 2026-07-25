@@ -39,6 +39,8 @@ export function PlanRitual({
   onComplete: () => void;
 }) {
   const { stored, currentState } = useContextState();
+  const { areas } = useAreas();
+
   const [step, setStep] = useState<Step>("rollover");
   // Picks made this session (task IDs to work on today)
   const [picks, setPicks] = useState<Set<string>>(() => new Set());
