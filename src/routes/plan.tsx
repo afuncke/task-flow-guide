@@ -533,7 +533,17 @@ function PlanPage() {
             {needsSlot.length > 0 && (
               <> · {needsSlot.length} needs a slot</>
             )}
+            {dayEvents.length > 0 && (
+              <>
+                {" "}
+                · {dayEvents.length} commitment{dayEvents.length === 1 ? "" : "s"} taking{" "}
+                {formatMinutes(
+                  eventMinutesInWindow(events, key, stored.schedule),
+                )}
+              </>
+            )}
           </p>
+
           {estimateNote(insight) && (
             <p className="mt-0.5 text-[11px] text-muted-foreground/80">
               {estimateNote(insight)}
