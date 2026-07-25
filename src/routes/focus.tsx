@@ -44,7 +44,14 @@ function FocusPage() {
   const [upNextOpen, setUpNextOpen] = useState(false);
   const [pinnedId, setPinnedId] = useState<string | null>(null);
 
-  const active = useMemo(() => tasks.filter((t) => t.status !== "done"), [tasks]);
+  const active = useMemo(
+    () =>
+      tasks.filter(
+        (t) => t.status !== "done" && (!areaFilter || matchesArea(t, aliveTasks, areaFilter)),
+      ),
+    [tasks, aliveTasks, areaFilter],
+  );
+
   const scoped = useMemo(
     () => (stored.hideMismatches ? active.filter((t) => contextFit(t, currentState)) : active),
     [active, currentState, stored.hideMismatches],
