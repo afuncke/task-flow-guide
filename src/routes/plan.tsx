@@ -1,15 +1,22 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, Sparkles, X, RotateCcw, Heart, Repeat } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, X, RotateCcw, Heart, Repeat, Sunset } from "lucide-react";
 import { useTasks } from "@/hooks/use-tasks";
 import { AreaRadar } from "@/components/tasks/AreaRadar";
 import { useContextState } from "@/hooks/use-context-state";
+import { useAreas } from "@/hooks/use-areas";
 import { usePlanState } from "@/lib/tasks/plan-store";
 import { autoSchedule, minutesToISO, type BusyRange } from "@/lib/tasks/auto-schedule";
 import { estimateInsight, estimateNote } from "@/lib/tasks/estimates";
+import { dayBudget, areaSplit, untouchedAreas } from "@/lib/tasks/day-budget";
+import { CapacityMeter } from "@/components/tasks/CapacityMeter";
+import { AreaBalance } from "@/components/tasks/AreaBalance";
+import { ShutdownRitual } from "@/components/tasks/ShutdownRitual";
+import { phaseOf } from "@/lib/time-of-day";
 import { forecastDeadlines } from "@/lib/tasks/forecast";
 import { DeadlineForecast } from "@/components/tasks/DeadlineForecast";
 import { toast } from "@/lib/playful/celebrate";
+
 import type { Task } from "@/lib/tasks/types";
 import { Button } from "@/components/ui/button";
 import {
