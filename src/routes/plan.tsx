@@ -261,7 +261,9 @@ function PlanPage() {
   }, [tasks, day, key]);
 
   const scheduledMin = scheduled.reduce((n, s) => n + s.slots * SLOT_MIN, 0);
-  const workWindowMin = (stored.schedule.end - stored.schedule.start) * 60;
+  const workWindowMin =
+    (stored.schedule.end - stored.schedule.start) * 60 -
+    eventMinutesInWindow(events, key, stored.schedule);
   const overCapacity = scheduledMin > workWindowMin;
 
   /* --- Live capacity budget + area balance for what's committed today --- */
@@ -277,9 +279,11 @@ function PlanPage() {
       dayBudget(committedTasks, stored.schedule, {
         factor: insight.factor,
         isToday: dayIsToday,
+        busyMinutes: eventMinutes,
       }),
-    [committedTasks, stored.schedule, insight.factor, dayIsToday],
+    [committedTasks, stored.schedule, insight.factor, dayIsToday, eventMinutes],
   );
+
 
   const split = useMemo(
     () => areaSplit(committedTasks, allTasks, areas, insight.factor),
