@@ -96,9 +96,11 @@ function patchForColumn(col: BoardColumn, orig: Task, today: string): Partial<Ta
 }
 
 function BoardPage() {
-  const { tasks, allTasks, hydrated, addTask, updateTask, setStatus, deleteTask, bulkUpdate } =
+  const { tasks, allTasks, aliveTasks, hydrated, addTask, updateTask, setStatus, deleteTask, bulkUpdate } =
     useTasks();
+  const { filter: areaFilter } = useAreas();
   const { currentState, stored } = useContextState();
+
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Task | null>(null);
   const [activeTags, setActiveTags] = useState<string[]>([]);
