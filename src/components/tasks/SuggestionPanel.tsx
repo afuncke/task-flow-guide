@@ -51,13 +51,13 @@ export function SuggestionPanel({
 }) {
   const { areas } = useAreas();
   const { allTasks, projects } = useTasks();
-  const { state } = useContextState();
+  const { currentState } = useContextState();
   const [thinking, setThinking] = useState(true);
   const [draft, setDraft] = useState<Suggestion | null>(null);
 
   const base = useMemo(
-    () => suggestTaskSettings({ task, areas, allTasks, state }),
-    [task, areas, allTasks, state],
+    () => suggestTaskSettings({ task, areas, allTasks, state: currentState }),
+    [task, areas, allTasks, currentState],
   );
 
   useEffect(() => {
