@@ -48,6 +48,7 @@ export interface TaskDialogProps {
     priority: TaskPriority;
     due?: string;
     context?: TaskContext;
+    scheduledDuration?: number;
   }) => void;
   onDelete?: () => void;
 }
