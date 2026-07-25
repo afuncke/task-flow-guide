@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { taskDialogStore } from "@/lib/tasks/dialog-store";
+import { captureStore } from "@/lib/tasks/capture-store";
+
 import { playfulStore } from "@/lib/playful/store";
 import { celebrate, toast } from "@/lib/playful/celebrate";
 import { soundSparkle } from "@/lib/playful/sound";
@@ -53,7 +55,7 @@ export function useKeybindings(onShowHelp: () => void) {
       if (isTypingTarget(e.target)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
-      // Leader sequence: g f, g p, g b, g c, g t
+      // Leader sequence: g f, g p, g b, g c, g t, g i, g r
       if (leader === "g") {
         const map: Record<string, string> = {
           f: "/focus",
@@ -61,8 +63,11 @@ export function useKeybindings(onShowHelp: () => void) {
           b: "/board",
           c: "/calendar",
           t: "/tasks",
+          i: "/inbox",
+          r: "/projects",
         };
         const path = map[e.key];
+
         clearLeader();
         if (path) {
           e.preventDefault();
@@ -81,6 +86,11 @@ export function useKeybindings(onShowHelp: () => void) {
           e.preventDefault();
           taskDialogStore.openNew();
           return;
+        case "c":
+          e.preventDefault();
+          captureStore.open();
+          return;
+
         case "?":
           e.preventDefault();
           onShowHelp();
