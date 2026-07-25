@@ -137,6 +137,24 @@ function FocusPage() {
             </Button>
           </div>
 
+          <div className="mt-6">
+            <FocusTimer
+              task={current}
+              onStart={() => setStatus(current.id, "doing")}
+              onPause={() => setStatus(current.id, "todo")}
+              onDone={(actualMinutes) => {
+                updateTask(current.id, { actualDuration: actualMinutes });
+                setStatus(current.id, "done");
+              }}
+              onExtend={(extra) =>
+                updateTask(current.id, {
+                  scheduledDuration: (current.scheduledDuration ?? 25) + extra,
+                })
+              }
+            />
+          </div>
+
+
           {upNext.length > 0 && (
             <Collapsible open={upNextOpen} onOpenChange={setUpNextOpen} className="mt-10">
               <CollapsibleTrigger className="flex items-center gap-1 text-xs text-muted-foreground hover:text-foreground">
