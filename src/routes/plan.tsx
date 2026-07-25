@@ -398,7 +398,17 @@ function PlanPage() {
           (b) => new Date(b.start).getTime() + b.duration * 60_000,
         );
         const allPast = ends.every((e) => e <= now.getTime());
-        if (allPast && t.status !== "doing") {
+        // A block that a meeting now sits on top of has to move.
+        const clashes = blocks.some((b) => {
+          const s = new Date(b.start);
+          const startMin = s.getHours() * 60 + s.getMinutes();
+          const endMin = startMin + b.duration;
+          return (
+            endMin > nowMin &&
+            busyEvents.some((ev) => startMin < ev.endMin && endMin > ev.startMin)
+          );
+        });
+        if ((allPast && t.status !== "doing") || (clashes && t.status !== "doing")) {
           stale.push(t);
         } else {
           for (const b of blocks) {
@@ -412,8 +422,12 @@ function PlanPage() {
       const candidates = [...fresh, ...stale];
       if (candidates.length === 0) return;
 
-      const signature = candidates
-        .map((t) => `${t.id}:${t.scheduledStart ?? "-"}:${t.scheduledDuration ?? 0}`)
+      const signature = [
+        ...candidates.map(
+          (t) => `${t.id}:${t.scheduledStart ?? "-"}:${t.scheduledDuration ?? 0}`,
+        ),
+        ...busyEvents.map((b) => `e:${b.startMin}-${b.endMin}`),
+      ]
         .sort()
         .join("|");
       if (signature === lastReplan.current) return;
@@ -430,7 +444,7 @@ function PlanPage() {
       if (moved > 0) {
         toast(
           stale.length > 0
-            ? "Plan updated — unfinished blocks moved ahead · u to undo"
+            ? "Plan updated — blocks moved around what's fixed · u to undo"
             : "Plan updated · u to undo",
         );
       }
@@ -438,7 +452,8 @@ function PlanPage() {
 
     return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [tasks, autoReplan, dayIsToday, hydrated, planHydrated, todayKey, insight.factor]);
+  }, [tasks, events, autoReplan, dayIsToday, hydrated, planHydrated, todayKey, insight.factor]);
+
 
   if (!hydrated || !planHydrated) return null;
 
