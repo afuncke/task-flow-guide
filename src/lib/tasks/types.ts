@@ -30,8 +30,11 @@ export interface Task {
   archived?: boolean; // "let it go" — hidden from lists but not deleted
   archivedAt?: string; // ISO
 
+  /* ---- Horizons of focus ---- */
+  areaId?: string; // Area of Responsibility (Health, Work, Family…)
+
   /* ---- GTD ---- */
-  bucket?: Bucket; // undefined = "next" (clarified next action)
+
   clarifiedAt?: string; // ISO — when it left the inbox
   isProject?: boolean; // an outcome needing more than one step
   projectId?: string; // parent project this action belongs to
