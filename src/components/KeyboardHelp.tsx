@@ -6,16 +6,20 @@ interface Row {
 }
 
 const NAV: Row[] = [
+  { keys: ["g", "i"], desc: "Go to Inbox" },
   { keys: ["g", "p"], desc: "Go to Plan" },
   { keys: ["g", "f"], desc: "Go to Focus" },
+  { keys: ["g", "r"], desc: "Go to Projects" },
   { keys: ["g", "b"], desc: "Go to Board" },
   { keys: ["g", "c"], desc: "Go to Calendar" },
   { keys: ["g", "t"], desc: "Go to All tasks" },
 ];
 
 const ACTIONS: Row[] = [
+  { keys: ["c"], desc: "Capture to inbox" },
   { keys: ["n"], desc: "New task" },
   { keys: ["s"], desc: "Jump to next scheduled block" },
+
   { keys: ["["], desc: "Previous day / month" },
   { keys: ["]"], desc: "Next day / month" },
   { keys: ["T"], desc: "Jump to today" },

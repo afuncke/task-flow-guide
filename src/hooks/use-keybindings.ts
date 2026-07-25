@@ -53,7 +53,7 @@ export function useKeybindings(onShowHelp: () => void) {
       if (isTypingTarget(e.target)) return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
 
-      // Leader sequence: g f, g p, g b, g c, g t
+      // Leader sequence: g f, g p, g b, g c, g t, g i, g r
       if (leader === "g") {
         const map: Record<string, string> = {
           f: "/focus",
@@ -61,8 +61,11 @@ export function useKeybindings(onShowHelp: () => void) {
           b: "/board",
           c: "/calendar",
           t: "/tasks",
+          i: "/inbox",
+          r: "/projects",
         };
         const path = map[e.key];
+
         clearLeader();
         if (path) {
           e.preventDefault();

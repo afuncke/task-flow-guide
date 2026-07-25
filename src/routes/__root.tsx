@@ -185,11 +185,35 @@ function RootComponent() {
         <ContextBar />
         <Outlet />
         <GlobalTaskDialog />
+        <CaptureBar />
         <KeyboardHelp open={helpOpen} onOpenChange={setHelpOpen} />
       </div>
     </QueryClientProvider>
   );
 }
+
+function InboxNavLink() {
+  const { inbox, hydrated } = useTasks();
+  return (
+    <Link
+      to="/inbox"
+      className="flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+      activeProps={{
+        className:
+          "flex items-center gap-1.5 rounded-md px-2.5 py-1 text-sm text-foreground font-medium",
+      }}
+    >
+      Inbox
+      {hydrated && inbox.length > 0 && (
+        <span className="rounded-full bg-primary/15 px-1.5 text-[10px] font-medium text-primary">
+          {inbox.length}
+        </span>
+      )}
+    </Link>
+  );
+}
+
+
 
 function NavLink({ to, children }: { to: string; children: ReactNode }) {
   return (
