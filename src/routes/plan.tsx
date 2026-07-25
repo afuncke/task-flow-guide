@@ -379,8 +379,10 @@ function PlanPage() {
       if (nowMin >= stored.schedule.end * 60) return;
 
       const stale: Task[] = [];
-      const busy: BusyRange[] = [...eventBusyRanges(events, todayKey)];
+      const busyEvents = eventBusyRanges(events, todayKey);
+      const busy: BusyRange[] = [...busyEvents];
       const fresh: Task[] = [];
+
 
 
       for (const t of tasks) {
