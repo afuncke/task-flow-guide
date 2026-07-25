@@ -1,6 +1,8 @@
 import { useEffect } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { taskDialogStore } from "@/lib/tasks/dialog-store";
+import { captureStore } from "@/lib/tasks/capture-store";
+
 import { playfulStore } from "@/lib/playful/store";
 import { celebrate, toast } from "@/lib/playful/celebrate";
 import { soundSparkle } from "@/lib/playful/sound";
@@ -84,6 +86,11 @@ export function useKeybindings(onShowHelp: () => void) {
           e.preventDefault();
           taskDialogStore.openNew();
           return;
+        case "c":
+          e.preventDefault();
+          captureStore.open();
+          return;
+
         case "?":
           e.preventDefault();
           onShowHelp();
