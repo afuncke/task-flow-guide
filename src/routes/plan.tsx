@@ -143,11 +143,39 @@ function PlanPage() {
   const [ritualDismissedThisSession, setRitualDismissedThisSession] = useState(false);
   const [softLandingOpen, setSoftLandingOpen] = useState(false);
   const [shutdownOpen, setShutdownOpen] = useState(false);
+  const [eventOpen, setEventOpen] = useState(false);
+  const [editingEvent, setEditingEvent] = useState<CalEvent | null>(null);
+  const [eventStartMin, setEventStartMin] = useState(9 * 60);
 
+  const { events, addEvent, updateEvent, removeEvent } = useEvents();
 
   const todayKey = dateKey(new Date());
   const dayIsToday = dateKey(day) === todayKey;
   const key = dateKey(day);
+
+  const dayEvents = useMemo(() => eventsOn(events, key), [events, key]);
+  const eventBusy = useMemo(() => eventBusyRanges(events, key), [events, key]);
+  const eventMinutes = useMemo(
+    () =>
+      eventMinutesInWindow(
+        events,
+        key,
+        stored.schedule,
+        dayIsToday ? new Date().getHours() * 60 + new Date().getMinutes() : undefined,
+      ),
+    [events, key, stored.schedule, dayIsToday],
+  );
+
+  const openNewEvent = (startMin = 9 * 60) => {
+    setEditingEvent(null);
+    setEventStartMin(startMin);
+    setEventOpen(true);
+  };
+  const openEditEvent = (ev: CalEvent) => {
+    setEditingEvent(ev);
+    setEventOpen(true);
+  };
+
 
   // How long things really take, learned from finished work.
   const insight = useMemo(() => estimateInsight(allTasks), [allTasks]);
