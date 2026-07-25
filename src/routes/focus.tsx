@@ -99,6 +99,28 @@ function FocusPage() {
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:py-16">
+      {nextScheduled && (
+        <button
+          onClick={() => {
+            setSkipped([]);
+            setPinnedId(nextScheduled.id);
+          }}
+          className={`mb-6 flex w-full items-center gap-3 rounded-lg border px-3 py-2 text-left text-sm transition-colors hover:bg-accent ${
+            current?.id === nextScheduled.id ? "border-primary/40 bg-primary/5" : ""
+          }`}
+          title="Jump to next scheduled block (s)"
+        >
+          <CalendarClock className="h-4 w-4 shrink-0 text-muted-foreground" />
+          <div className="min-w-0 flex-1">
+            <div className="text-[11px] uppercase tracking-wide text-muted-foreground">
+              Next scheduled · {formatWhen(nextScheduled.scheduledStart!)}
+              {nextScheduled.scheduledDuration ? ` · ${nextScheduled.scheduledDuration}m` : ""}
+            </div>
+            <div className="truncate font-medium text-foreground">{nextScheduled.title}</div>
+          </div>
+          <kbd className="rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">s</kbd>
+        </button>
+      )}
       {!current ? (
         <div className="text-center">
           <h1 className="text-2xl font-semibold">Nothing to do right now.</h1>
