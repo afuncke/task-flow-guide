@@ -15,6 +15,7 @@ import { UrgencyBadge } from "@/components/tasks/UrgencyBadge";
 import { ContextChips } from "@/components/tasks/ContextChips";
 import { TaskDialog } from "@/components/tasks/TaskDialog";
 import { FocusTimer } from "@/components/tasks/FocusTimer";
+import { SubtaskList } from "@/components/tasks/SubtaskList";
 import {
   Collapsible,
   CollapsibleContent,
