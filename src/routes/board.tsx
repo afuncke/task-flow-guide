@@ -235,6 +235,7 @@ function BoardPage() {
                       onEdit={() => openEdit(t)}
                       onMove={(s) => setStatus(t.id, s)}
                       onDelete={() => deleteTask(t.id)}
+                      currentState={currentState}
                     />
                   </SortableTask>
                 ))}
