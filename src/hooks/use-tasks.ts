@@ -49,13 +49,19 @@ export function useTasks() {
 
   const updateTask = useCallback(
     (id: string, patch: Partial<Task>) => {
+      const before = loadTasks().find((t) => t.id === id);
       persist(loadTasks().map((t) => (t.id === id ? { ...t, ...patch } : t)));
+      if (patch.status === "done" && before?.status !== "done") {
+        soundComplete();
+        celebrate();
+      }
     },
     [persist],
   );
 
   const setStatus = useCallback(
     (id: string, status: TaskStatus) => {
+      const before = loadTasks().find((t) => t.id === id);
       persist(
         loadTasks().map((t) =>
           t.id === id
@@ -67,6 +73,10 @@ export function useTasks() {
             : t,
         ),
       );
+      if (status === "done" && before?.status !== "done") {
+        soundComplete();
+        celebrate();
+      }
     },
     [persist],
   );
