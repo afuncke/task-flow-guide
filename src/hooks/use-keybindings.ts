@@ -109,6 +109,18 @@ export function useKeybindings(onShowHelp: () => void) {
           e.preventDefault();
           dispatch("soft-landing");
           return;
+        case "p": {
+          e.preventDefault();
+          const on = playfulStore.toggle();
+          if (on) {
+            soundSparkle();
+            celebrate({ x: window.innerWidth / 2, y: 80 });
+            toast(COPY.playfulOn[1]);
+          } else {
+            toast(COPY.playfulOff[0]);
+          }
+          return;
+        }
       }
     };
 
