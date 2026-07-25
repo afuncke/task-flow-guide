@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
-import { ChevronLeft, ChevronRight, Sparkles, X, RotateCcw } from "lucide-react";
+import { ChevronLeft, ChevronRight, Sparkles, X, RotateCcw, Heart } from "lucide-react";
 import { useTasks } from "@/hooks/use-tasks";
 import { useContextState } from "@/hooks/use-context-state";
 import { usePlanState } from "@/lib/tasks/plan-store";
